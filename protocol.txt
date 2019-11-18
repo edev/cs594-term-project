@@ -1,0 +1,303 @@
+This file will be in JSON notation, except with comments interspersed throughout. Comments in the JSON spec are noted with double slashes, C++-style. Each line item from the rubric is noted below in the header for the messages that satisfy it. The numbers in parentheses after each message's title are the rubric line items.
+
+* General conventions
+
+    All fields in all messages are required unless they are noted as optional.
+
+    If a required field is blank, empty, or missing, the recipient must ignore the message.
+
+* Communication flow
+
+    All communication between server and client takes place over a direct TCP connection between the two. Allowed messages are restricted to the following flow:
+
+    1. Immediately after establishing a connection to the server, the client sends a Greeting message.
+    2. The server either accepts or declines the Greeting, notifying the client by sending the corresponding response message. If the server declines the Greeting, it should close the TCP connection after sending its response message.
+    3. Upon receiving a greeting response:
+        a. accept: the client may now send any client message except another greeting.
+        b. decline: the client should expect the server to close the connection. The client may also terminate the connection itself.
+
+    Either party may send Disconnect TBD) messages at any time an open TCP connection exists; these messages are not subject to the control flow above. When any party sends or receives a Disconnect (TBD) message, all communication must cease immediately, and both parties must terminate the connection gracefully.
+
+    If any party receives a message that violates this communication flow, the recipient must ignore the message.
+
+* Rooms
+
+    A room, AKA a chat room, is a named list of clients. Messages sent to a room will be broadcast to all other clients in the room. A client may join or leave the room at will. A room will exist for as long as at least one client is present in the room.
+
+    The default room is a nameless room that clients automatically join and may not leave. The list of clients in the default room is the list of clients connected to the server who have been sent an Accept Greeting message.
+
+* Success and Error Messages
+
+    Certain messages have expected responses. For instance, a client that sends a Greeting message (at the correct time) can expect a Greeting Response message. However, the protocol intentionally lacks specific responses for most messages in order to avoid unnecessary complexity in the protocol's design. Instead, the protocol defines general-purpose Success and Error messages. See the relevant message types for details.
+
+* Messages
+
+*.* Greeting (3)
+
+    Sent by: client
+
+    The purpose of the greeting message is to request to join chat and provide the server with the opportunity to accept or decline. The message is kept as brief as possible for version compatibility. 
+
+*.*.* Format
+
+    {
+        "type": "greeting",
+        "version": version_number 
+        "displayName": name
+    }
+
+*.*.* Fields
+
+    - version_number: a string indicating which version of the protocol the client is using. Ex: "0.0.1"
+    - name: the name by which client would like to be known. The protocol does not restrict name length, but servers may set their own, arbitrary restrictions on name, e.g. on length, format, content, etc. A name may not contain whitespace characters. Ex: "joe_smith"
+
+
+*.* Greeting Responses (3)
+        
+    Sent by: server
+
+    The server either accepts or declines a greeting. If the server does not support the specified protocol version, it must decline the greeting. Otherwise, the server may accept or decline the greeting based on its own, arbitrary policies.
+
+*.*.* Accept Greeting
+
+    Indicates that the server accept the client's greeting.
+
+*.*.*.* Format
+
+    {
+        "type": "greetingResponse",
+        "response": "accept"
+    }
+
+*.*.* Decline Greeting
+
+    Indicates that the server declines the client's greeting.
+
+*.*.*.* Format
+
+    {
+        "type": "greetingResponse",
+        "response": "decline",
+        "reason": reason
+    }
+
+*.*.*.*.* Fields
+
+    - reason: a human-readable explanation string suitable to be displayed as an error message.
+
+*.* Join Room (4, 6)
+
+    Sent by: client
+
+    Indicates that the client wishes to join the named room. The room will be created if it does not already exist.
+
+*.*.* Format
+
+    {
+        "type": "joinRoom",
+        "name": name
+    }
+
+*.*.* Fields
+
+    - name: The name of the room to create. A room name may not contain whitespace characters.
+
+*.* Request Room List (5)
+
+    Sent by: client
+
+    Requests a complete list of all current rooms on the server.
+
+    The server's respones is a Room List message.
+
+*.*.* Format
+
+    {
+        "type": "requestRoomList"
+    }
+
+*.* Room List
+
+    Sent by: server
+
+    Provides a complete list of all current rooms on the server. This message is sent in response to a Request Room List message.
+
+*.*.* Format
+
+    {
+        "type": "roomList",
+        "rooms": roomList
+    }
+
+*.*.* Fields
+
+    - roomList: a JSON list of room names. Rooms may be listed in any order. Ex: ["general", "project_questions"]
+
+*.* Leave Room (7)
+
+    Sent by: client
+
+    Directs the server to remove the client from the named room (if it exists).
+
+*.*.* Format
+
+    {
+        "type": "leaveRoom",
+        "name": name
+    }
+
+*.*.* Fields
+
+    name: the name of the room that the client wishes to leave.
+
+*.* Request Room Member List
+
+    Sent by: client
+
+    Requests a complete list of all clients in a specific room.
+
+    The server's respones is a Room Member List message.
+
+*.*.* Format
+
+    {
+        "type": "requestRoomMemberList",
+        "name": name
+    }
+
+*.*.* Fields
+
+    name: (optional) the name of the room. To specify the default room, omit this field.
+
+*.* Room Member List
+
+    Sent by: server
+
+    Provides a complete list of all current members of a specific room on the server. This message is sent in response to a Request Room Member List message.
+
+*.*.* Format
+
+    {
+        "type": "roomMemberList",
+        "room": room,
+        "members": roomMemberList
+    }
+
+*.*.* Fields
+
+    - room: the name of the room.
+    - roomMemberList: a JSON list of client names. Clients may be listed in any order. Ex: ["mikey2022", "fred.m"]
+
+*.* Say (10)
+
+    Sent by: client
+
+    Sends a chat message to a room.
+
+    Upon receipt of this message, the server verifies that the client is in the specified room. If so, the server sends a Said message to each client in the room except the client who sent the Say message.
+
+*.*.* Format
+
+    {
+        "type": "say",
+        "room": room,
+        "message": message
+    }
+
+*.*.* Fields
+
+    - room: (optional) the name of the room to which the message is being sent. To specify the default room, omit this field.
+    - message: the message being sent to the room.
+
+*.* Said (10)
+
+    Sent by: server
+
+    Informs a client that another client sent a message to a room.
+
+*.*.* Format
+
+    {
+        "type": "said",
+        "room": room,
+        "message": message,
+        "sender": sender
+    }
+
+*.*.* Fields
+
+    - room: (optional) the name of the room to which the message is being sent. To specify the default room, omit this field.
+    - message: the message being sent to the room.
+    - sender: the displayName of the client who sent the message.
+
+*.* Disconnect
+
+    Sent by: server or client
+
+    Informs the receiving party that the sending party intends to terminate the connection.
+
+*.*.* Format
+
+    {
+        "type": "disconnect",
+    }
+
+* * Generic Success and Error Responses
+
+    When the server receives a message from a client, the server may, at its own discretion, send either a Success message or an Error message to the client. This message notifies the client of the outcome of the client's message. The client must clearly and promptly display Success and Error messages when it receives them. 
+
+    Note to implementers: these responses are not intended to uniquely identify a specific client message. 
+
+*.*.* Success
+
+    Sent by: server
+
+    Notifies a client that a previous message was successfully processed. 
+
+*.*.*.* Format
+
+    {
+        "type": "success",
+        "message": message
+    }
+
+*.*.*.* Fields
+
+    - message: the text to be displayed in the client application.
+
+*.*.* Error
+
+    Sent by: server
+
+    Notifies a client that a previous message could not be processed. 
+
+*.*.*.* Format
+
+    {
+        "type": "error",
+        "message": message
+    }
+
+*.*.*.* Fields
+
+    - message: the text to be displayed in the client application.
+
+*.* Notice
+
+    Sent by: server
+
+    Provides an informational message to a client. The client must clearly and promptly display Notice messages when it receives them.
+
+    Note to implementers: servers are never required to send notice messages; these are simply provided as a way for the server to talk directly to clients when needed. It is permissible for a server not to use this message type. However, a client must correctly process notice messages as specified here.
+
+*.*.* Format
+
+    {
+        "type": "notice",
+        "message": message
+    }
+
+*.*.* Fields
+
+    - message: the text to be displayed in the client application.
+
