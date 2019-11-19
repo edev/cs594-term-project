@@ -4,12 +4,16 @@ require 'set'
 # This module defines a class Matcher that provides a structure to check objects against general expectations,
 # plus a variety of methods that return matchers for various, common purposes.
 #
-# Matchers for float, integer, string, and array simply verify the type of the object.
+# Literals can, of course, be specified directly.
 #
-# The hash matcher verifies an Hash object's keys and values. (The latter can be literals or any matchers.)
+# Any comparison that works correctly on case equality, such as checking that an object is an array or a string,
+# can be specified directly and does not require a custom matcher.
 #
-# Literals, specific arrays (including ones with matchers), and anything that responds to == and ===
-# in the desired manner can be directly specified, e.g. ["abc", Matchers::string] will match ["abc", "def"].
+# Any collection that specifically supports case equality, using case equality to check its elements, can be
+# specified directly and does not require a custom matcher.
+#
+# Hashes and arrays do not have the required case equality support, so the hash and array methods provide
+# correct matchers for these data types.
 module Matchers
     ##
     # Defines the structure of a matcher that can examine an object and decide whether it amtches a given spec.
@@ -42,6 +46,24 @@ module Matchers
     end
 
     ##
+    # Expects an array object with specified elements.
+    def self.array(exact=true, *elems)
+        m = Matcher.new
+
+        # First, a basic type check.
+        m.expect { |other| Array === other }
+
+        if exact
+            # Make sure the set of keys is exactly the expected set.
+            m.expect { |other| elems.length == other.length }
+        end
+
+        elems.each_index do |i| 
+            m.expect { |other| elems[i] === other[i] }
+        end
+    end
+
+    ##
     # Expects a Hash object with exactly the keys provided and exactly the specified values for said keys.
     #
     # exact - if true, no other keys may be present in the hash.
@@ -62,20 +84,6 @@ module Matchers
         end
         
         m
-    end
-
-    [
-        Float,
-        Integer,
-        String,
-        Array
-    ].each do |cls|
-        method = cls.name.downcase.to_sym
-        self.class.define_method(method) do
-            m = Matcher.new
-            m.expect { |other| cls === other }
-            m
-        end
     end
 end
 
