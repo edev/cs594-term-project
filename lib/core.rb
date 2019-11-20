@@ -15,8 +15,8 @@ module Chat
     module Receivable
         def receive
             message = gets(sep=MESSAGE_SEPARATOR)
-            message.strip!
-            return(:EOF) if message.length == 0
+            message.strip! unless message.nil?
+            return(:EOF) if message.nil? || message.length == 0
             begin
                 JSON.parse message, symbolize_names: true
             rescue JSON::ParserError => e

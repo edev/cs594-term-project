@@ -125,6 +125,18 @@ module Chat
             end
         end
 
+        def clean_up(client)
+            @client_info_lock.synchronize do
+                # Remove the client from all rooms. If any rooms are empty as a result, remove them.
+                @rooms.each do |room_name, member_list|
+                    member_list.delete(client)
+                    if member_list.length == 0
+                        @rooms.delete room_name
+                    end
+                end
+            end
+        end
+
         ##
         # Listens to input on a socket and responds.
         #
@@ -145,6 +157,11 @@ module Chat
                     next
                 when JoinRoom
                     create_or_join_room message[:name], client
+                when RequestRoomList
+                    client.send RoomList.build(@rooms.keys)
+                else
+                    STDOUT.puts "[Debug] unrecognized message received:"
+                    p message
                 end
             end
         end
@@ -188,6 +205,7 @@ module Chat
                 thread = Thread.new do 
                     if greet(client)
                         listen(client)
+                        clean_up(client)
                     end
                 end
                 @client_info_lock.synchronize do

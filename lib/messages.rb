@@ -84,8 +84,50 @@ module Chat
             @@matcher === other
         end
 
+        ##
+        # /join <room_name>
         def self.client_command
             %r{^/join\s+(?<room_name>\S+)$}
+        end
+    end
+
+    class RequestRoomList
+        @@matcher = Matchers::hash(
+            type: "requestRoomList"
+        )
+
+        def self.build
+            {
+                type: "requestRoomList"
+            }
+        end
+
+        def self.===(other)
+            @@matcher === other
+        end
+
+        ##
+        # /rooms
+        def self.client_command
+            %r{/rooms}
+        end
+    end
+
+    class RoomList
+        @@matcher = Matchers::hash(
+            type: "roomList",
+            rooms: Array
+        )
+
+        def self.build(room_array)
+            {
+                type: "roomList",
+                rooms: room_array
+            }
+        end
+
+        def self.===(other)
+            @@matcher === other
         end
     end
 end

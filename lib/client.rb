@@ -70,11 +70,25 @@ module Chat
         ##
         # Listens to the socket and processes input.
         def listen
-            while message = @socket.gets(sep="\0")
-                message.strip!
-                if message.length > 0
-                    # There's content to process.
-                    STDOUT.puts message
+            loop do
+                begin
+                    message = @socket.receive
+                rescue Exception => e
+                    STDERR.puts "Error: #{e.message}"
+                    return false
+                end
+
+                case message
+                when :EOF
+                    return false
+                when :SKIP
+                    next
+                when RoomList
+                    puts "Rooms:"
+                    message[:rooms].each { |r| puts "\t#{r}" }
+                else
+                    STDOUT.puts "[Debug] unrecognized message received:"
+                    p message
                 end
             end
         end
@@ -91,8 +105,10 @@ module Chat
                 when /^\/exit$/i
                     break
                 when JoinRoom.client_command
-                  match = JoinRoom.client_command.match input
-                  @socket.send JoinRoom.build(match[:room_name])
+                    match = JoinRoom.client_command.match input
+                    @socket.send JoinRoom.build(match[:room_name])
+                when RequestRoomList.client_command
+                    @socket.send RequestRoomList.build
                 when %r{^/} # Any unrecognized slash command.
                     STDERR.puts "Unrecognized command."
                 else # Just normal text. Say it.
