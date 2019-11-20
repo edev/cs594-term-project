@@ -5,6 +5,18 @@ require 'socket'
 CLI_PROMPT_TEXT = "server> "
 
 module Chat
+    class ConnectedClient
+        attr_accessor :socket, :thread, :display_name
+
+        def receive
+            @socket.receive
+        end
+
+        def send(*args)
+            @socket.send(*args)
+        end
+    end
+
     ##
     # Provides all the necessary facilities for host an IRC chat server per the project RFC.
     #
@@ -21,30 +33,27 @@ module Chat
 
             # The fields in this block are all synchronized by the lock below.
             @client_info_lock = Mutex.new
-            @client_sockets = []
-            @client_threads = []
-            @display_names = {}   # Keys are display names, values are sockets corresponding to the names.
+            @clients = {}         # Keys are display names, values are ConnectedClient objects.
+            @rooms = {}           # Keys are room names, values are lists of users (ConnectedClient) in each room.
         end
 
-        ##
-        # Adds a socket and/or a thread to the client list in a thread-safe way.
-        #
-        # Either socket or client can safely be nil. There is no pairing between the two; this method can safely
-        # add sockets, threads, or both to their respective lists.
-        private def add_client(socket=nil, thread=nil)
+        private def register_name(name, client)
             @client_info_lock.synchronize do
-                @client_sockets << socket unless socket.nil?
-                @client_threads << thread unless thread.nil?
+                if @clients.has_key? name
+                    return false
+                end
+                @clients[name] = client
+                return true
             end
         end
 
-        private def register_name(name, socket)
+        private def create_or_join_room(room_name, client)
             @client_info_lock.synchronize do
-                if @display_names.has_key? name
-                    return false
+                if @rooms.has_key? room_name
+                    @rooms[room_name] << client unless @rooms[room_name].include? client
+                else
+                    @rooms[room_name] = [client]
                 end
-                @display_names[name] = socket
-                return true
             end
         end
 
@@ -57,30 +66,20 @@ module Chat
             raise Exception.new "Not yet implemented."
         end
 
-        private def each_thread(&block)
-            if !block_given?
-                raise ArgumentError.new "Expected a block, but none was provided."
-            end
-
-            @client_info_lock.synchronize do
-                @client_threads.each do |t|
-                    yield i
-                end
-            end
-        end
-
         def accept
             @tcpServer.accept
         end
 
         ##
         # Initializes an incoming client connection and handles the greeting sequence.
+        #
+        # client - a ConnectedClient.
         def greet(client)
             # Retrieve the current thread to use the thread-local data store for client-specific state.
             thread = Thread.current
 
             # Modify socket's singleton class to include the Sendable and Receivable modules.
-            class << client
+            class << client.socket
                 include Sendable
                 include Receivable
             end
@@ -92,6 +91,7 @@ module Chat
                     STDERR.puts "Error: #{e.message}"
                     return false
                 end
+
                 case message
                 when :EOF
                     return false
@@ -119,15 +119,16 @@ module Chat
                     # This is the first greeting, and everything checks out.
                     client.send AcceptGreeting.build
                     thread[:greeting_done] = true
+                    client.display_name = message[:displayName]
                     return true
                 end
             end
         end
 
         ##
-        # Listens to input for a TCPSocket and responds.
+        # Listens to input on a socket and responds.
         #
-        # client - a TCPSocket object representing a newly connected client.
+        # client - a ConnectedClient.
         def listen(client)
             loop do
                 begin
@@ -136,11 +137,14 @@ module Chat
                     STDERR.puts "Error: #{e.message}"
                     return false
                 end
+
                 case message
                 when :EOF
                     return false
                 when :SKIP
                     next
+                when JoinRoom
+                    create_or_join_room message[:name], client
                 end
             end
         end
@@ -174,19 +178,21 @@ module Chat
             # Then, start accepting clients for eternity.
             loop do
                 # Accept a new connection (blocking).
-                client = accept
+                socket = accept
 
                 # Store the client socket before invoking a new thread to listen. This avoids a race condition
                 # between the two threads by ensuring that client is added to the socket list by the time
                 # the thread is spawned. After we have a thread object, we'll store that, too.
-                add_client(socket: client)
+                client = ConnectedClient.new
+                client.socket = socket
                 thread = Thread.new do 
                     if greet(client)
                         listen(client)
                     end
-                    client.close
                 end
-                add_client(thread: client)
+                @client_info_lock.synchronize do
+                    client.thread = thread
+                end
             end
         end
     end

@@ -90,6 +90,9 @@ module Chat
                     break
                 when /^\/exit$/i
                     break
+                when JoinRoom.client_command
+                  match = JoinRoom.client_command.match input
+                  @socket.send JoinRoom.build(match[:room_name])
                 when %r{^/} # Any unrecognized slash command.
                     STDERR.puts "Unrecognized command."
                 else # Just normal text. Say it.
