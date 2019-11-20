@@ -61,16 +61,10 @@ module Chat
         end
 
         ##
-        # Listens to input for a TCPSocket and responds.
-        #
-        # client - a TCPSocket object representing a newly connected client.
-        def listen(client)
+        # Initializes an incoming client connection and handles the greeting sequence.
+        def greet(client)
             # Retrieve the current thread to use the thread-local data store for client-specific state.
             thread = Thread.current
-
-            # Set up required initial client state.
-            thread[:greeting_done] = false    # Has the client sent a Greeting and received an AcceptGreeting?
-
 
             # Modify socket's singleton class to include the Sendable and Receivable modules.
             class << client
@@ -83,43 +77,53 @@ module Chat
                     message = client.receive
                 rescue Exception => e
                     STDERR.puts "Error: #{e.message}"
-                    STDERR.puts "Closing connection."
-                    break
+                    return false
                 end
                 case message
                 when :EOF
-                    break
+                    return false
                 when :SKIP
                     next
                 when Greeting
-                    if thread[:greeting_done]
-                        # This is a duplicate greeting. Ignore it.
-                        next
-                    end
-
                     if message[:version] != VERSION
-                        # Version mismatch.
+                        # Fatal: version mismatch.
                         client.send DeclineGreeting.build("Incompatible version. Server is running #{VERSION}.")
-                        break
+                        return false
                     end
 
                     if !(/^\S+$/ === message[:displayName])
-                        # Invalid displayName.
+                        # Fatal: invalid displayName.
                         client.send DeclineGreeting.build("Invalid display name. Spaces are not allowed.")
-                        break
+                        return false
                     end
 
                     # This is the first greeting, and everything checks out.
                     client.send AcceptGreeting.build
                     thread[:greeting_done] = true
-                else
-                    STDERR.puts "Receivable#receive returned a non-Hash value:"
-                    STDERR.puts message.inspect
-                    STDERR.puts "Skipping."
+                    return true
+                end
+            end
+        end
+
+        ##
+        # Listens to input for a TCPSocket and responds.
+        #
+        # client - a TCPSocket object representing a newly connected client.
+        def listen(client)
+            loop do
+                begin
+                    message = client.receive
+                rescue Exception => e
+                    STDERR.puts "Error: #{e.message}"
+                    return false
+                end
+                case message
+                when :EOF
+                    return false
+                when :SKIP
                     next
                 end
             end
-            client.close
         end
 
         ##
@@ -157,7 +161,12 @@ module Chat
                 # between the two threads by ensuring that client is added to the socket list by the time
                 # the thread is spawned. After we have a thread object, we'll store that, too.
                 add_client(socket: client)
-                thread = Thread.new { listen(client) }
+                thread = Thread.new do 
+                    if greet(client)
+                        listen(client)
+                    end
+                    client.close
+                end
                 add_client(thread: client)
             end
         end
