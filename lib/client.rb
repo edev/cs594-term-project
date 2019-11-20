@@ -86,9 +86,9 @@ module Chat
             while input = STDIN.gets
                 input.strip!
                 case input
-                when /^quit$/i
+                when /^\/quit$/i
                     break
-                when /^exit$/i
+                when /^\/exit$/i
                     break
                 when %r{^/} # Any unrecognized slash command.
                     STDERR.puts "Unrecognized command."
