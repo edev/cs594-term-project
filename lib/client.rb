@@ -86,6 +86,13 @@ module Chat
                 when RoomList
                     puts "Rooms:"
                     message[:rooms].each { |r| puts "\t#{r}" }
+                when RoomMemberList
+                    if message[:room] == ""
+                        puts "Members of default room:"
+                    else
+                        puts "Members of #{message[:room]}:"
+                    end
+                    message[:members].each { |m| puts "\t#{m}" }
                 else
                     STDOUT.puts "[Debug] unrecognized message received:"
                     p message
@@ -112,6 +119,9 @@ module Chat
                 when LeaveRoom.client_command
                     match = LeaveRoom.client_command.match input
                     @socket.send LeaveRoom.build(match[:room_name])
+                when RequestRoomMemberList.client_command
+                    match = RequestRoomMemberList.client_command.match input
+                    @socket.send RequestRoomMemberList.build(match[:room_name])
                 when %r{^/} # Any unrecognized slash command.
                     STDERR.puts "Unrecognized command."
                 else # Just normal text. Say it.

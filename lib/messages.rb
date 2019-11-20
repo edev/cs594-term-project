@@ -154,4 +154,55 @@ module Chat
             %r{^/leave\s+(?<room_name>\S+)$}
         end
     end
+
+    class RequestRoomMemberList
+        @@matcher = Matchers::hash(
+            type: "requestRoomMemberList",
+            name: String
+        )
+
+        def self.build(name="")
+            if name.nil?
+                # In case we get a nil name, we'll substitute "" to be nice to the caller and comply with the protocol.
+                name = ""
+            end
+
+            {
+                type: "requestRoomMemberList",
+                name: name
+            }
+        end
+
+        def self.===(other)
+            @@matcher === other
+        end
+
+        ##
+        # Two valid signatures:
+        # /members
+        # /members <room_name>
+        def self.client_command
+            %r{^/members(?:\s+(?<room_name>\S+))?$}
+        end
+    end
+
+    class RoomMemberList
+        @@matcher = Matchers::hash(
+          "type": "roomMemberList",
+          "room": String,
+          "members": Array
+        )
+
+        def self.build(room, members)
+            {
+                "type": "roomMemberList",
+                "room": room,
+                "members": members
+            }
+        end
+
+        def self.===(other)
+            @@matcher === other
+        end
+    end
 end

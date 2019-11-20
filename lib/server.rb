@@ -92,6 +92,27 @@ module Chat
             end
         end
 
+        ##
+        # Looks up the members of the named room and returns a reply for the requesting client.
+        private def room_members(name)
+            if name.nil?
+                # TODO send an Error message.
+                STDERR.puts "Room name cannot be nil."
+            end
+            if name == ""
+                # Send client list.
+                members = @client_info_lock.synchronize { @clients.keys.dup }
+                RoomMemberList.build name, members
+            elsif @rooms.has_key? name
+                # Send client list for named room.
+                members = @client_info_lock.synchronize { @rooms[name].map &:display_name }
+                RoomMemberList.build name, members
+            else
+                # TODO Send Error message.
+                STDERR.puts "Room #{name} does not exist."
+            end
+        end
+
         def accept
             @tcpServer.accept
         end
@@ -189,6 +210,8 @@ module Chat
                 when LeaveRoom
                     leave_room message[:name], client
                     # TODO Check for error returns and pass them as Error messages once Error messages are implemented.
+                when RequestRoomMemberList
+                    client.send room_members message[:name]
                 else
                     STDOUT.puts "[Debug] unrecognized message received:"
                     p message

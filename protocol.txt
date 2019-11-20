@@ -167,7 +167,7 @@ This file will be in JSON notation, except with comments interspersed throughout
 
 *.*.* Fields
 
-    name: (optional) the name of the room. To specify the default room, omit this field.
+    name: the name of the room. To specify the default room, use "".
 
 *.* Room Member List
 
@@ -206,7 +206,7 @@ This file will be in JSON notation, except with comments interspersed throughout
 
 *.*.* Fields
 
-    - room: (optional) the name of the room to which the message is being sent. To specify the default room, omit this field.
+    - room: the name of the room to which the message is being sent. To specify the default room, use "".
     - message: the message being sent to the room.
 
 *.* Said (10)
@@ -226,7 +226,7 @@ This file will be in JSON notation, except with comments interspersed throughout
 
 *.*.* Fields
 
-    - room: (optional) the name of the room to which the message is being sent. To specify the default room, omit this field.
+    - room: the name of the room to which the message is being sent. To specify the default room, use "".
     - message: the message being sent to the room.
     - sender: the displayName of the client who sent the message.
 
