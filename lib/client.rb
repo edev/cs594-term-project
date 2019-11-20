@@ -36,8 +36,9 @@ module Chat
             if display_name.nil?
                 exit(1)
             end
+
+            # Clean display_name and ensure that it has no spaces.
             display_name.chomp!
-            puts display_name
             unless display_name =~ /^\S+$/
                 puts "Invalid display name."
                 exit(1)
@@ -47,10 +48,16 @@ module Chat
 
             # Await the response.
             loop do
-                response = @socket.receive
+                begin
+                    response = @socket.receive
+                rescue Exception => e
+                    STDERR.puts "Error: #{e.message}"
+                    exit(1)
+                end
+
                 case response
                 when :EOF
-                    STDERR.puts "Socket closed while connecting to server."
+                    STDERR.puts "Connection lost."
                     exit(1)
                 when :SKIP
                     # Malformed packet. Ignore it and keep listening.
@@ -74,7 +81,11 @@ module Chat
                 begin
                     message = @socket.receive
                 rescue Exception => e
-                    STDERR.puts "Error: #{e.message}"
+                    # If the socket was closed, possiby by another thread, then there's no real error, but we do have to quit.
+                    unless @socket.closed?
+                        # Otherwise, print the cause of the exception.
+                        STDERR.puts "Error: #{e.message}"
+                    end
                     return false
                 end
 
@@ -107,6 +118,9 @@ module Chat
             while input = STDIN.gets
                 input.strip!
                 case input
+                when ""
+                    # The user entered an empty line.
+                    next
                 when /^\/quit$/i
                     break
                 when /^\/exit$/i
