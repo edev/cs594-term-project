@@ -18,9 +18,12 @@ module Chat
         def initialize(port)
             @port = port
             @tcpServer = TCPServer.new @port
+
+            # The fields in this block are all synchronized by the lock below.
+            @client_info_lock = Mutex.new
             @client_sockets = []
             @client_threads = []
-            @clients_lock = Mutex.new
+            @display_names = {}   # Keys are display names, values are sockets corresponding to the names.
         end
 
         ##
@@ -29,9 +32,19 @@ module Chat
         # Either socket or client can safely be nil. There is no pairing between the two; this method can safely
         # add sockets, threads, or both to their respective lists.
         private def add_client(socket=nil, thread=nil)
-            @clients_lock.synchronize do
+            @client_info_lock.synchronize do
                 @client_sockets << socket unless socket.nil?
                 @client_threads << thread unless thread.nil?
+            end
+        end
+
+        private def register_name(name, socket)
+            @client_info_lock.synchronize do
+                if @display_names.has_key? name
+                    return false
+                end
+                @display_names[name] = socket
+                return true
             end
         end
 
@@ -49,7 +62,7 @@ module Chat
                 raise ArgumentError.new "Expected a block, but none was provided."
             end
 
-            @clients_lock.synchronize do
+            @client_info_lock.synchronize do
                 @client_threads.each do |t|
                     yield i
                 end
@@ -94,6 +107,12 @@ module Chat
                     if !(/^\S+$/ === message[:displayName])
                         # Fatal: invalid displayName.
                         client.send DeclineGreeting.build("Invalid display name. Spaces are not allowed.")
+                        return false
+                    end
+
+                    if register_name(message[:displayName], client) == false
+                        # Fatal: username already taken.
+                        client.send DeclineGreeting.build("Display name is already in use. Please choose a different name.")
                         return false
                     end
 
