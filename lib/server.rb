@@ -96,6 +96,18 @@ module Chat
             @tcpServer.accept
         end
 
+        def clean_up(client)
+            @client_info_lock.synchronize do
+                # Remove the client from all rooms. If any rooms are empty as a result, remove them.
+                @rooms.each do |room_name, member_list|
+                    member_list.delete(client)
+                    if member_list.length == 0
+                        @rooms.delete room_name
+                    end
+                end
+            end
+        end
+
         ##
         # Initializes an incoming client connection and handles the greeting sequence.
         #
@@ -147,18 +159,6 @@ module Chat
                     thread[:greeting_done] = true
                     client.display_name = message[:displayName]
                     return true
-                end
-            end
-        end
-
-        def clean_up(client)
-            @client_info_lock.synchronize do
-                # Remove the client from all rooms. If any rooms are empty as a result, remove them.
-                @rooms.each do |room_name, member_list|
-                    member_list.delete(client)
-                    if member_list.length == 0
-                        @rooms.delete room_name
-                    end
                 end
             end
         end
