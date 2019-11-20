@@ -14,76 +14,77 @@ require 'set'
 #
 # Hashes and arrays do not have the required case equality support, so the hash and array methods provide
 # correct matchers for these data types.
-module Matchers
-    ##
-    # Defines the structure of a matcher that can examine an object and decide whether it amtches a given spec.
-    class Matcher
-        def initialize()
-            # A list of blocks that must all return true in order for an object to match.
-            @matchers = []
-        end
-        
+module Chat
+    module Matchers
         ##
-        # Adds a block to the list of expectations. The block must take a single argument, the object to examine.
-        def expect(&block)
-            @matchers << block
-        end
-
-        ##
-        # Case equality for matchers: checks whether the object matches the matcher's expectations.
-        def ===(other)
-            @matchers.each do |m|
-                if m.call(other) == false
-                    return false
-                end
+        # Defines the structure of a matcher that can examine an object and decide whether it amtches a given spec.
+        class Matcher
+            def initialize()
+                # A list of blocks that must all return true in order for an object to match.
+                @matchers = []
+            end
+            
+            ##
+            # Adds a block to the list of expectations. The block must take a single argument, the object to examine.
+            def expect(&block)
+                @matchers << block
             end
 
-            # All matchers returned true, so they passed!
-            return true
+            ##
+            # Case equality for matchers: checks whether the object matches the matcher's expectations.
+            def ===(other)
+                @matchers.each do |m|
+                    if m.call(other) == false
+                        return false
+                    end
+                end
+
+                # All matchers returned true, so they passed!
+                return true
+            end
+
+            alias == ===
         end
 
-        alias == ===
-    end
+        ##
+        # Expects an array object with specified elements.
+        def self.array(exact=true, *elems)
+            m = Matcher.new
 
-    ##
-    # Expects an array object with specified elements.
-    def self.array(exact=true, *elems)
-        m = Matcher.new
+            # First, a basic type check.
+            m.expect { |other| Array === other }
 
-        # First, a basic type check.
-        m.expect { |other| Array === other }
+            if exact
+                # Make sure the set of keys is exactly the expected set.
+                m.expect { |other| elems.length == other.length }
+            end
 
-        if exact
-            # Make sure the set of keys is exactly the expected set.
-            m.expect { |other| elems.length == other.length }
+            elems.each_index do |i| 
+                m.expect { |other| elems[i] === other[i] }
+            end
         end
 
-        elems.each_index do |i| 
-            m.expect { |other| elems[i] === other[i] }
+        ##
+        # Expects a Hash object with exactly the keys provided and exactly the specified values for said keys.
+        #
+        # exact - if true, no other keys may be present in the hash.
+        def self.hash(exact=true, **elems)
+            m = Matcher.new
+
+            # First, a basic type check.
+            m.expect { |other| Hash === other }
+
+            if exact
+                # Make sure the set of keys is exactly the expected set.
+                m.expect { |other| Set.new(elems.keys) == Set.new(other.keys) }
+            end
+
+            # Verify that every key matches the expectation.
+            elems.each do |key, matcher|
+                m.expect { |other| matcher === other[key] }
+            end
+            
+            m
         end
-    end
-
-    ##
-    # Expects a Hash object with exactly the keys provided and exactly the specified values for said keys.
-    #
-    # exact - if true, no other keys may be present in the hash.
-    def self.hash(exact=true, **elems)
-        m = Matcher.new
-
-        # First, a basic type check.
-        m.expect { |other| Hash === other }
-
-        if exact
-            # Make sure the set of keys is exactly the expected set.
-            m.expect { |other| Set.new(elems.keys) == Set.new(other.keys) }
-        end
-
-        # Verify that every key matches the expectation.
-        elems.each do |key, matcher|
-            m.expect { |other| matcher === other[key] }
-        end
-        
-        m
     end
 end
-

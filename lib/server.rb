@@ -1,4 +1,5 @@
 require_relative 'core'
+require_relative 'messages'
 require 'socket'
 
 CLI_PROMPT_TEXT = "server> "
@@ -64,23 +65,53 @@ module Chat
         #
         # client - a TCPSocket object representing a newly connected client.
         def listen(client)
+            # Retrieve the current thread to use the thread-local data store for client-specific state.
+            thread = Thread.current
+
+            # Set up required initial client state.
+            thread[:greeting_done] = false    # Has the client sent a Greeting and received an AcceptGreeting?
+
+
             # Modify socket's singleton class to include the Sendable and Receivable modules.
             class << client
                 include Sendable
                 include Receivable
             end
+
             loop do
-                message = client.receive
+                begin
+                    message = client.receive
+                rescue Exception => e
+                    STDERR.puts "Error: #{e.message}"
+                    STDERR.puts "Closing connection."
+                    break
+                end
                 case message
                 when :EOF
                     break
                 when :SKIP
                     next
-                when Hash
-                    # TODO Process message
-                    # temporary, proof-of-concept:
-                    p message
-                    client.send message
+                when Greeting
+                    if thread[:greeting_done]
+                        # This is a duplicate greeting. Ignore it.
+                        next
+                    end
+
+                    if message[:version] != VERSION
+                        # Version mismatch.
+                        client.send DeclineGreeting.build("Incompatible version. Server is running #{VERSION}.")
+                        break
+                    end
+
+                    if !(/^\S+$/ === message[:displayName])
+                        # Invalid displayName.
+                        client.send DeclineGreeting.build("Invalid display name. Spaces are not allowed.")
+                        break
+                    end
+
+                    # This is the first greeting, and everything checks out.
+                    client.send AcceptGreeting.build
+                    thread[:greeting_done] = true
                 else
                     STDERR.puts "Receivable#receive returned a non-Hash value:"
                     STDERR.puts message.inspect
@@ -88,6 +119,7 @@ module Chat
                     next
                 end
             end
+            client.close
         end
 
         ##

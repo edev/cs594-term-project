@@ -1,5 +1,6 @@
 require_relative 'core'
 
+require_relative 'messages'
 require 'socket'
 
 CLI_PROMPT_TEXT = ""
@@ -26,9 +27,44 @@ module Chat
             # Modify socket's singleton class to include the Chat::Sendable module.
             class << @socket
                 include Chat::Sendable
+                include Chat::Receivable
             end
 
-            # TODO Send greeting and await response.
+            # Ask the user for a username ("displayName")
+            STDOUT.print "Enter your display name (no spaces): "
+            display_name = STDIN.gets
+            if display_name.nil?
+                exit(1)
+            end
+            display_name.chomp!
+            puts display_name
+            unless display_name =~ /^\S+$/
+                puts "Invalid display name."
+                exit(1)
+            end
+
+            @socket.send Greeting.build(VERSION, display_name)
+
+            # Await the response.
+            loop do
+                response = @socket.receive
+                case response
+                when :EOF
+                    STDERR.puts "Socket closed while connecting to server."
+                    exit(1)
+                when :SKIP
+                    # Malformed packet. Ignore it and keep listening.
+                    next
+                when AcceptGreeting
+                    STDOUT.puts "Connected to server."
+                    break
+                when DeclineGreeting
+                    STDERR.puts "Server rejected connection. Reason: #{response[:reason]}"
+                    exit(1)
+                else
+                    STDOUT.puts "Received unrecognized message. Ignoring."
+                end
+            end
         end
 
         ##

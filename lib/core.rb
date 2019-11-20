@@ -18,8 +18,8 @@ module Chat
             message.strip!
             return(:EOF) if message.length == 0
             begin
-                JSON.parse message
-            rescue JSON::ParseError => e
+                JSON.parse message, symbolize_names: true
+            rescue JSON::ParserError => e
                 STDERR.puts "Received a message that was not JSON. Ignored."
                 :SKIP
             end
