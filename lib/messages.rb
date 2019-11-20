@@ -66,4 +66,26 @@ module Chat
             @@matcher === other
         end
     end
+
+    class JoinRoom
+        @@matcher = Matchers::hash(
+            type: "joinRoom",
+            name: String
+        )
+
+        def self.build(name)
+            {
+                type: "joinRoom",
+                name: name
+            }
+        end
+
+        def self.===(other)
+            @@matcher === other
+        end
+
+        def self.client_command
+            %r{^/join\s+(?<room_name>\S+)$}
+        end
+    end
 end
