@@ -126,6 +126,7 @@ module Chat
                         @rooms.delete room_name
                     end
                 end
+                @clients.delete client.display_name
             end
         end
 
