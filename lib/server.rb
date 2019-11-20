@@ -37,16 +37,6 @@ module Chat
             @rooms = {}           # Keys are room names, values are lists of users (ConnectedClient) in each room.
         end
 
-        private def register_name(name, client)
-            @client_info_lock.synchronize do
-                if @clients.has_key? name
-                    return false
-                end
-                @clients[name] = client
-                return true
-            end
-        end
-
         private def create_or_join_room(room_name, client)
             @client_info_lock.synchronize do
                 if @rooms.has_key? room_name
@@ -64,6 +54,42 @@ module Chat
 
             # TODO synchronize and, within that, loop over all clients, invoking block.
             raise Exception.new "Not yet implemented."
+        end
+
+        ##
+        # Removes client from the named room. If client was the member of the room, deletes the room.
+        #
+        # If the room was found and the client was in the room, returns true.
+        #
+        # If the room was not found or the client was not in the room, returns (false, reason) where
+        # reason is a text explanation suitable to send to the client, e.g. in an Error message.
+        private def leave_room(name, client)
+            @client_info_lock.synchronize do
+                unless @rooms.has_key?(name)
+                    return false, "Room #{name} does not exist."
+                end
+
+                unless @rooms[name].include?(client)
+                    return false, "You are not in room #{name}."
+                end
+
+                @rooms[name].delete client
+
+                if @rooms[name].length == 0
+                    @rooms.delete name
+                end
+            end
+            true
+        end
+
+        private def register_name(name, client)
+            @client_info_lock.synchronize do
+                if @clients.has_key? name
+                    return false
+                end
+                @clients[name] = client
+                return true
+            end
         end
 
         def accept
@@ -156,9 +182,13 @@ module Chat
                 when :SKIP
                     next
                 when JoinRoom
+                    # TODO Check whether the room name is valid (no spaces). Otherwise, send error response.
                     create_or_join_room message[:name], client
                 when RequestRoomList
                     client.send RoomList.build(@rooms.keys)
+                when LeaveRoom
+                    leave_room message[:name], client
+                    # TODO Check for error returns and pass them as Error messages once Error messages are implemented.
                 else
                     STDOUT.puts "[Debug] unrecognized message received:"
                     p message

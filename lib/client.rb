@@ -109,6 +109,9 @@ module Chat
                     @socket.send JoinRoom.build(match[:room_name])
                 when RequestRoomList.client_command
                     @socket.send RequestRoomList.build
+                when LeaveRoom.client_command
+                    match = LeaveRoom.client_command.match input
+                    @socket.send LeaveRoom.build(match[:room_name])
                 when %r{^/} # Any unrecognized slash command.
                     STDERR.puts "Unrecognized command."
                 else # Just normal text. Say it.

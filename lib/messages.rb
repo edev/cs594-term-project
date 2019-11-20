@@ -130,4 +130,28 @@ module Chat
             @@matcher === other
         end
     end
+
+    class LeaveRoom
+        @@matcher = Matchers::hash(
+            type: "leaveRoom",
+            name: String
+        )
+
+        def self.build(name)
+            {
+                type: "leaveRoom",
+                name: name
+            }
+        end
+
+        def self.===(other)
+            @@matcher === other
+        end
+
+        ##
+        # /leave <room_name>
+        def self.client_command
+            %r{^/leave\s+(?<room_name>\S+)$}
+        end
+    end
 end
