@@ -328,9 +328,9 @@ module Chat
             while input = STDIN.gets
                 input.strip!
                 case input
-                when /^quit$/i
+                when /^\/quit$/i
                     break
-                when /^exit$/i
+                when /^\/exit$/i
                     break
                 else
                     STDERR.puts "Unrecognized command."
