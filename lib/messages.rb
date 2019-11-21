@@ -109,7 +109,7 @@ module Chat
         ##
         # /rooms
         def self.client_command
-            %r{/rooms}
+            %r{^/rooms$}
         end
     end
 
