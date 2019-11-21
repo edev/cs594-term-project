@@ -86,12 +86,12 @@ module Chat
                         # Otherwise, print the cause of the exception.
                         STDERR.puts "Error: #{e.message}"
                     end
-                    return false
+                    return
                 end
 
                 case message
                 when :EOF
-                    return false
+                    return
                 when :SKIP
                     next
                 when RoomList
@@ -110,6 +110,9 @@ module Chat
                     else
                         STDOUT.puts "[#{message[:room]}] #{message[:sender]}: #{message[:message]}"
                     end
+                when Disconnect
+                    STDOUT.puts "The server ended the connection."
+                    return
                 when Success
                     STDOUT.puts message[:message]
                 when Notice

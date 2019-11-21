@@ -337,6 +337,13 @@ module Chat
                 end
                 print CLI_PROMPT_TEXT
             end
+
+            @client_info_lock.synchronize do
+                @clients.each_value do |client|
+                    client.send Disconnect.build
+                end
+            end
+
             exit(0)
         end
 
