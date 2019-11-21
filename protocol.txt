@@ -1,4 +1,121 @@
-This file will be in JSON notation, except with comments interspersed throughout. Comments in the JSON spec are noted with double slashes, C++-style. Each line item from the rubric is noted below in the header for the messages that satisfy it. The numbers in parentheses after each message's title are the rubric line items.
+CS 594
+Internet Draft                                         Portland State University
+Intended status: IRC Class Project Specification                December 6, 2019 
+Expires: June 2020
+
+                          Internet Relay Class Protocol
+
+Status of this memo
+
+    This memo defines an Experimental Protocol for the Internet
+    community.  Discussion and suggestions for improvement are requested.
+    Please refer to the current edition of the "IAB Official Protocol
+    Standards" for the standardization state and status of this protocol.
+    Distribution of this memo is unlimited.
+
+Abstract
+
+    The Internet Relay Class (IRC) protocol over the last six weeks of fall
+    term in 2019 at Portland State University for the class CS 594:
+    Internetworking Protocols. The protocol responds to specified project
+    rubric.
+
+    IRC is a JSON-based protocol written for a client-server application model.
+
+Copyright notice
+
+    Copyright (c) 2019 Dylan Laufenberg. All rights reserved.
+
+<< TABLE OF CONTENTS >>
+
+* Introduction
+
+    This specification describes the Internet Relay Class (IRC) protocol,
+    not to be confused with the common Internet Relay Chat (IRC) protocol. The
+    protocol utilizes a client-server architecture whereby the server relays
+    messages among clients.
+
+    The list of features follows.
+
+* Required features
+
+    The protocol below defines, and the client and server implement, the
+    following required features of the rubric. The following listing maps
+    rubric line items to the message types below that provide the corresponding
+    functionality:
+
+    3.  Client can connect to a server: Greeting, Accept Greeting, 
+        Decline Greeting.
+
+    4.  Client can create a room: Join Room.
+
+        Explanation: If the room does not exist, it will be created.
+
+    5.  Client can list all rooms: Request Room List, Room List.
+
+    6.  Client can join a room: Join Room.
+
+    7.  Client can leave a room: Leave Room.
+
+    8.  Client can list members of a room: Request Room Member List, Room
+        Member List
+
+    10. Client can send messages to a room: Say, Said.
+
+    11. Client can join multiple (selected) rooms: Join Room.
+
+    12. Client can send distinct messages to multiple (selected) rooms: Say,
+        Said.
+
+    13. Client can disconnect from a server: Disconnect.
+
+    14. Server can disconnect from clients: Disconnect.
+
+    The implementation is responsible for the following rubric line items, as
+    they do not require changes to protocol design:
+
+    2.  Server Process
+
+        In the reference implementation of the protocol, the server process is
+        defined in /lib/server.rb and run via /server. It is a single-process,
+        multi-threaded application that communicates via TCP sockets. The main
+        thread accepts connections and spawns a new thread for each. A separate
+        "prompt thread" accepts terminal input on the server side and processes
+        it, though the only supported commands are /exit and /quit, both of
+        which gracefully shut down the server.
+
+    9.  Multiple clients can connect to a server
+
+        The protocol places no restrictions on the number of conccurent clients
+        on a server. In the reference implementation, the practical limit is
+        determined by the naive data structures used to track clients and
+        rooms, the performance of Ruby threads, or the use of a global lock
+        to synchronize all data structures.
+
+    15. Server can gracefully handle client crashes.
+
+        When a client crashes, the server treats it just like a graceful client
+        disconnect, sending all remaining clients a Notice message to inform
+        them that a client has disconnected.
+
+    16. Client can gracefully handle server crashes.
+
+        Although the client cannot continue to operate without a connection
+        to a server, it detects the disconnection, informs the user, and
+        exits peacefully rather than crashing.
+
+* Extra features
+
+    The protocol additionally provides private messaging through the Whisper
+    and Whispered messages.
+
+* Reference implementation
+
+    The reference implementation, written in Ruby, is available at:
+
+    https://github.com/edev/cs594-term-project
+
+    It is written for Ruby 2.6.3.
 
 * General conventions
 
@@ -16,7 +133,7 @@ This file will be in JSON notation, except with comments interspersed throughout
         a. accept: the client may now send any client message except another greeting.
         b. decline: the client should expect the server to close the connection. The client may also terminate the connection itself.
 
-    Either party may send Disconnect TBD) messages at any time an open TCP connection exists; these messages are not subject to the control flow above. When any party sends or receives a Disconnect (TBD) message, all communication must cease immediately, and both parties must terminate the connection gracefully.
+    Either party may send Disconnect messages at any time an open TCP connection exists; these messages are not subject to the control flow above. When any party sends or receives a Disconnect message, all communication must cease immediately, and both parties must terminate the connection gracefully.
 
     If any party receives a message that violates this communication flow, the recipient must ignore the message.
 
@@ -32,7 +149,7 @@ This file will be in JSON notation, except with comments interspersed throughout
 
 * Messages
 
-*.* Greeting (3)
+*.* Greeting
 
     Sent by: client
 
@@ -52,7 +169,7 @@ This file will be in JSON notation, except with comments interspersed throughout
     - name: the name by which client would like to be known. The protocol does not restrict name length, but servers may set their own, arbitrary restrictions on name, e.g. on length, format, content, etc. A name may not contain whitespace characters. Ex: "joe_smith"
 
 
-*.* Greeting Responses (3)
+*.* Greeting Responses
         
     Sent by: server
 
@@ -85,7 +202,7 @@ This file will be in JSON notation, except with comments interspersed throughout
 
     - reason: a human-readable explanation string suitable to be displayed as an error message.
 
-*.* Join Room (4, 6)
+*.* Join Room
 
     Sent by: client
 
@@ -102,7 +219,7 @@ This file will be in JSON notation, except with comments interspersed throughout
 
     - name: The name of the room to create. A room name may not contain whitespace characters.
 
-*.* Request Room List (5)
+*.* Request Room List
 
     Sent by: client
 
@@ -133,7 +250,7 @@ This file will be in JSON notation, except with comments interspersed throughout
 
     - roomList: a JSON list of room names. Rooms may be listed in any order. Ex: ["general", "project_questions"]
 
-*.* Leave Room (7)
+*.* Leave Room
 
     Sent by: client
 
@@ -188,7 +305,7 @@ This file will be in JSON notation, except with comments interspersed throughout
     - room: the name of the room.
     - roomMemberList: a JSON list of client names. Clients may be listed in any order. Ex: ["mikey2022", "fred.m"]
 
-*.* Say (10)
+*.* Say
 
     Sent by: client
 
@@ -209,7 +326,7 @@ This file will be in JSON notation, except with comments interspersed throughout
     - room: the name of the room to which the message is being sent. To specify the default room, use "".
     - message: the message being sent to the room.
 
-*.* Said (10)
+*.* Said
 
     Sent by: server
 
@@ -229,6 +346,46 @@ This file will be in JSON notation, except with comments interspersed throughout
     - room: the name of the room to which the message is being sent. To specify the default room, use "".
     - message: the message being sent to the room.
     - sender: the displayName of the client who sent the message.
+
+*.* Whisper
+
+    Sent by: client
+
+    Sends a message to one other, specific, named client.
+
+*.*.* Format
+
+    {
+        "type": "whisper",
+        "to": receiver,
+        "message": message
+    }
+
+*.*.* Fields
+
+    - receiver: the name of the client who should receive the message.
+    - message: the message being sent to the receiver.
+
+*.* Whispered
+
+    Sent by: server
+
+    Informs a client that another client has sent them a private message.
+
+*.*.* Format
+
+    {
+        "type": "whispered",
+        "to": receiver,
+        "from": sender,
+        "message": message
+    }
+
+*.*.* Fields
+
+    - receiver: the name of the client who should receive the message.
+    - sender: the name of the client who sent the message.
+    - message: the message being sent to the receiver.
 
 *.* Disconnect
 
@@ -301,3 +458,24 @@ This file will be in JSON notation, except with comments interspersed throughout
 
     - message: the text to be displayed in the client application.
 
+* Handling errors
+
+    Both the client and the server must detect the closure of the TCP
+    connection. If the client detects a closed TCP connection, it must exit
+    gracefully. If the server detects a closed TCP connection to a client,
+    it must remove that client from all rooms (including the default room),
+    and remove any rooms that become empty as a result of this process. It may
+    inform other clients of the client's departure via a Notice mssage, but
+    this is left to the discretion of the implementer.
+
+* Security
+
+    This protocol makes no consideration for security, as security is beyond
+    the purview of the class project. This protocol is not suitable for
+    production use, nor is the reference implementation of either the client
+    or the server.
+
+* Conclusion
+
+    This specification provides a JSON-based protocol for sending text messages
+    among clients, using a server as a central relay.
