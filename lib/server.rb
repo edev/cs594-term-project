@@ -293,7 +293,9 @@ module Chat
                     next
                 when JoinRoom
                     created, reason = create_or_join_room message[:name], client
-                    if created == false
+                    if created
+                        client.send Success.build("Joined #{message[:name]}.")
+                    else
                         # TODO Send error message.
                         STDERR.puts reason
                     end
@@ -302,7 +304,9 @@ module Chat
                     client.send RoomList.build(room_list)
                 when LeaveRoom
                     left, reason = leave_room message[:name], client
-                    if left == false
+                    if left
+                        client.send Success.build("Left #{message[:name]}.")
+                    else
                         # TODO Send error message.
                         STDERR.puts reason
                     end

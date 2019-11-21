@@ -110,6 +110,8 @@ module Chat
                     else
                         STDOUT.puts "[#{message[:room]}] #{message[:sender]}: #{message[:message]}"
                     end
+                when Success
+                    STDOUT.puts message[:message]
                 when Notice
                     STDOUT.puts message[:message]
                 else

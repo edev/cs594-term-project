@@ -272,6 +272,24 @@ module Chat
         end
     end
 
+    class Success
+        @@matcher = Matchers::hash(
+            type: "success",
+            message: String
+        )
+
+        def self.build(message)
+            {
+                type: "success",
+                message: message
+            }
+        end
+
+        def self.===(other)
+            @@matcher === other
+        end
+    end
+
     class Notice
         @@matcher = Matchers::hash(
             type: "notice",
