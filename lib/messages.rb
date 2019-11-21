@@ -290,6 +290,24 @@ module Chat
         end
     end
 
+    class Error
+        @@matcher = Matchers::hash(
+            type: "error",
+            message: String
+        )
+
+        def self.build(message)
+            {
+                type: "error",
+                message: message
+            }
+        end
+
+        def self.===(other)
+            @@matcher === other
+        end
+    end
+
     class Notice
         @@matcher = Matchers::hash(
             type: "notice",

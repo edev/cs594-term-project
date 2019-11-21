@@ -68,7 +68,11 @@ module Chat
 
             @client_info_lock.synchronize do
                 if @rooms.has_key? name
-                    @rooms[name] << client unless @rooms[name].include? client
+                    if @rooms[name].include? client
+                        return false, "You are already in #{name}."
+                    else
+                      @rooms[name] << client
+                    end
                 else
                     @rooms[name] = [client]
                 end
@@ -129,8 +133,7 @@ module Chat
         # Looks up the members of the named room and returns a reply for the requesting client.
         private def room_members(name)
             if name.nil?
-                # TODO build an Error message.
-                STDERR.puts "Room name cannot be nil."
+                Error.build "Room name cannot be nil."
             elsif name == ""
                 # Send client list.
                 members = @client_info_lock.synchronize { @clients.keys.dup }
@@ -140,8 +143,7 @@ module Chat
                 members = @client_info_lock.synchronize { @rooms[name].map &:display_name }
                 RoomMemberList.build name, members
             else
-                # TODO build an Error message.
-                STDERR.puts "Room #{name} does not exist."
+                Error.build "Room #{name} does not exist."
             end
         end
 
@@ -154,8 +156,7 @@ module Chat
         private def speak(room, message, speaker)
             @client_info_lock.synchronize do
                 if message.nil?
-                    # TODO Send an Error message.
-                    speaker.send({ msg: "Message cannot be nil." })
+                    speaker.send Error.build("Message cannot be nil.")
                     return
                 end
 
@@ -170,15 +171,13 @@ module Chat
                 else
                     # Named room. Ensure that it exists.
                     unless @rooms.has_key? room
-                        # TODO Send an Error message.
-                        speaker.send({ msg: "Room #{room} does not exist." })
+                        speaker.send Error.build("Room #{room} does not exist.")
                         return
                     end
 
                     # Ensure that the speaker is i nthe room.
                     unless @rooms[room].include? speaker
-                        # TODO Send an Error message.
-                        speaker.send({ msg: "You are not a member of #{room}." })
+                      speaker.send Error.build("You are not a member of #{room}.")
                         return
                     end
 
@@ -296,8 +295,7 @@ module Chat
                     if created
                         client.send Success.build("Joined #{message[:name]}.")
                     else
-                        # TODO Send error message.
-                        STDERR.puts reason
+                        client.send Error.build(reason)
                     end
                 when RequestRoomList
                     room_list = @client_info_lock.synchronize { @rooms.keys.dup }
@@ -307,8 +305,7 @@ module Chat
                     if left
                         client.send Success.build("Left #{message[:name]}.")
                     else
-                        # TODO Send error message.
-                        STDERR.puts reason
+                        client.send Error.build(reason)
                     end
                 when RequestRoomMemberList
                     client.send room_members(message[:name])

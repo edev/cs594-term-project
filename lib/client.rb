@@ -114,6 +114,8 @@ module Chat
                     STDOUT.puts message[:message]
                 when Notice
                     STDOUT.puts message[:message]
+                when Error
+                    STDERR.puts message[:message]
                 else
                     STDOUT.puts "[Debug] unrecognized message received:"
                     p message
