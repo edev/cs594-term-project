@@ -1,6 +1,6 @@
 CS 594
-Internet Draft                                         Portland State University
-Intended status: IRC Class Project Specification                December 6, 2019 
+Internet Draft                                        Portland State University
+Intended status: IRC Class Project Specification               December 6, 2019 
 Expires: June 2020
 
                           Internet Relay Class Protocol
@@ -121,31 +121,65 @@ Copyright notice
 
     All fields in all messages are required unless they are noted as optional.
 
-    If a required field is blank, empty, or missing, the recipient must ignore the message.
+    If a required field is blank, empty, or missing, the recipient must ignore
+    the message.
 
 * Communication flow
 
-    All communication between server and client takes place over a direct TCP connection between the two. Allowed messages are restricted to the following flow:
+    All communication between server and client takes place over a direct TCP
+    connection between the two. Allowed messages are restricted to the
+    following flow:
 
-    1. Immediately after establishing a connection to the server, the client sends a Greeting message.
-    2. The server either accepts or declines the Greeting, notifying the client by sending the corresponding response message. If the server declines the Greeting, it should close the TCP connection after sending its response message.
-    3. Upon receiving a greeting response:
-        a. accept: the client may now send any client message except another greeting.
-        b. decline: the client should expect the server to close the connection. The client may also terminate the connection itself.
+    1.  Immediately after establishing a connection to the server, the client
+    sends a Greeting message.
 
-    Either party may send Disconnect messages at any time an open TCP connection exists; these messages are not subject to the control flow above. When any party sends or receives a Disconnect message, all communication must cease immediately, and both parties must terminate the connection gracefully.
+    2.  The server either accepts or declines the Greeting, notifying the 
+        client by sending the corresponding response message. If the server
+        declines the Greeting, it should close the TCP connection after sending
+        its response message.
 
-    If any party receives a message that violates this communication flow, the recipient must ignore the message.
+    3.  Upon receiving a greeting response:
+
+        a.  accept: the client may now send any client message except
+            another greeting.
+
+        b.  decline: the client should expect the server to close the
+            connection. The client may also terminate the connection itself.
+
+    Either party may send Disconnect messages at any time an open TCP
+    connection exists; these messages are not subject to the control flow
+    above. When any party sends or receives a Disconnect message, all
+    communication among the involved parties must cease immediately, and
+    both parties must terminate the connection gracefully. When a client
+    sends the server a Disconnect message, the server must end the connection
+    with the client but remain operational and connected to any other clients
+    that may be connected to the server.
+
+    If any party receives a message that violates this communication flow, the
+    recipient must ignore the message.
 
 * Rooms
 
-    A room, AKA a chat room, is a named list of clients. Messages sent to a room will be broadcast to all other clients in the room. A client may join or leave the room at will. A room will exist for as long as at least one client is present in the room.
+    A room, AKA a chat room, is a named list of clients. Messages sent to a
+    room will be broadcast to all other clients in the room. A client may join
+    or leave the room at will. A room will exist for as long as at least one
+    client is present in the room.
 
-    The default room is a nameless room that clients automatically join and may not leave. The list of clients in the default room is the list of clients connected to the server who have been sent an Accept Greeting message.
+    The default room is a nameless room that clients automatically join and
+    may not leave. The list of clients in the default room is the list of
+    clients connected to the server who have been sent an Accept Greeting
+    message.
 
-* Success and Error Messages
+* Success, Error, and Notice messages
 
-    Certain messages have expected responses. For instance, a client that sends a Greeting message (at the correct time) can expect a Greeting Response message. However, the protocol intentionally lacks specific responses for most messages in order to avoid unnecessary complexity in the protocol's design. Instead, the protocol defines general-purpose Success and Error messages. See the relevant message types for details.
+    Certain messages have expected responses. For instance, a client that
+    sends a Greeting message (at the correct time) can expect a Greeting
+    Response message. However, the protocol intentionally lacks specific
+    responses for most messages in order to avoid unnecessary complexity in
+    the protocol's design. Instead, the protocol defines general-purpose
+    Success, Error, and Notice messages that the server may send to clients
+    for informational purposes at its own discretion. See the relevant
+    message types for details.
 
 * Messages
 
@@ -153,7 +187,9 @@ Copyright notice
 
     Sent by: client
 
-    The purpose of the greeting message is to request to join chat and provide the server with the opportunity to accept or decline. The message is kept as brief as possible for version compatibility. 
+    The purpose of the greeting message is to request to join chat and
+    provide the server with the opportunity to accept or decline. The message
+    is kept as brief as possible for version compatibility. 
 
 *.*.* Format
 
@@ -165,15 +201,22 @@ Copyright notice
 
 *.*.* Fields
 
-    - version_number: a string indicating which version of the protocol the client is using. Ex: "0.0.1"
-    - name: the name by which client would like to be known. The protocol does not restrict name length, but servers may set their own, arbitrary restrictions on name, e.g. on length, format, content, etc. A name may not contain whitespace characters. Ex: "joe_smith"
+    - version_number: a string indicating which version of the protocol the
+      client is using. Ex: "0.0.1"
 
+    - name: the name by which client would like to be known. The protocol does
+      not restrict name length, but servers may set their own, arbitrary
+      restrictions on name, e.g. on length, format, content, etc. A name may
+      not contain whitespace characters. Ex: "joe_smith"
 
 *.* Greeting Responses
         
     Sent by: server
 
-    The server either accepts or declines a greeting. If the server does not support the specified protocol version, it must decline the greeting. Otherwise, the server may accept or decline the greeting based on its own, arbitrary policies.
+    The server either accepts or declines a greeting. If the server does not
+    support the specified protocol version, it must decline the greeting.
+    Otherwise, the server may accept or decline the greeting based on its own,
+    arbitrary policies.
 
 *.*.* Accept Greeting
 
@@ -200,13 +243,15 @@ Copyright notice
 
 *.*.*.*.* Fields
 
-    - reason: a human-readable explanation string suitable to be displayed as an error message.
+    - reason: a human-readable explanation string suitable to be displayed as
+      an error message.
 
 *.* Join Room
 
     Sent by: client
 
-    Indicates that the client wishes to join the named room. The room will be created if it does not already exist.
+    Indicates that the client wishes to join the named room. The room will be
+    created if it does not already exist.
 
 *.*.* Format
 
@@ -217,7 +262,8 @@ Copyright notice
 
 *.*.* Fields
 
-    - name: The name of the room to create. A room name may not contain whitespace characters.
+    - name: The name of the room to create. A room name may not contain
+      whitespace characters.
 
 *.* Request Room List
 
@@ -237,7 +283,8 @@ Copyright notice
 
     Sent by: server
 
-    Provides a complete list of all current rooms on the server. This message is sent in response to a Request Room List message.
+    Provides a complete list of all current rooms on the server. This message
+    is sent in response to a Request Room List message.
 
 *.*.* Format
 
@@ -248,7 +295,8 @@ Copyright notice
 
 *.*.* Fields
 
-    - roomList: a JSON list of room names. Rooms may be listed in any order. Ex: ["general", "project_questions"]
+    - roomList: a JSON list of room names. Rooms may be listed in any order.
+      Ex: ["general", "project_questions"]
 
 *.* Leave Room
 
@@ -290,7 +338,9 @@ Copyright notice
 
     Sent by: server
 
-    Provides a complete list of all current members of a specific room on the server. This message is sent in response to a Request Room Member List message.
+    Provides a complete list of all current members of a specific room on the
+    server. This message is sent in response to a Request Room Member List
+    message.
 
 *.*.* Format
 
@@ -303,7 +353,9 @@ Copyright notice
 *.*.* Fields
 
     - room: the name of the room.
-    - roomMemberList: a JSON list of client names. Clients may be listed in any order. Ex: ["mikey2022", "fred.m"]
+
+    - roomMemberList: a JSON list of client names. Clients may be listed in
+      any order. Ex: ["mikey2022", "fred.m"]
 
 *.* Say
 
@@ -311,7 +363,9 @@ Copyright notice
 
     Sends a chat message to a room.
 
-    Upon receipt of this message, the server verifies that the client is in the specified room. If so, the server sends a Said message to each client in the room except the client who sent the Say message.
+    Upon receipt of this message, the server verifies that the client is in
+    the specified room. If so, the server sends a Said message to each client
+    in the room except the client who sent the Say message.
 
 *.*.* Format
 
@@ -323,7 +377,9 @@ Copyright notice
 
 *.*.* Fields
 
-    - room: the name of the room to which the message is being sent. To specify the default room, use "".
+    - room: the name of the room to which the message is being sent. To
+      specify the default room, use "".
+
     - message: the message being sent to the room.
 
 *.* Said
@@ -343,8 +399,11 @@ Copyright notice
 
 *.*.* Fields
 
-    - room: the name of the room to which the message is being sent. To specify the default room, use "".
+    - room: the name of the room to which the message is being sent.
+      To specify the default room, use "".
+
     - message: the message being sent to the room.
+
     - sender: the displayName of the client who sent the message.
 
 *.* Whisper
@@ -357,13 +416,14 @@ Copyright notice
 
     {
         "type": "whisper",
-        "to": receiver,
+        "to": recipient,
         "message": message
     }
 
 *.*.* Fields
 
-    - receiver: the name of the client who should receive the message.
+    - recipient: the name of the client who should receive the message.
+
     - message: the message being sent to the receiver.
 
 *.* Whispered
@@ -376,22 +436,25 @@ Copyright notice
 
     {
         "type": "whispered",
-        "to": receiver,
+        "to": recipient,
         "from": sender,
         "message": message
     }
 
 *.*.* Fields
 
-    - receiver: the name of the client who should receive the message.
+    - recipient: the name of the client who should receive the message.
+
     - sender: the name of the client who sent the message.
+
     - message: the message being sent to the receiver.
 
 *.* Disconnect
 
     Sent by: server or client
 
-    Informs the receiving party that the sending party intends to terminate the connection.
+    Informs the receiving party that the sending party intends to terminate
+    the connection.
 
 *.*.* Format
 
@@ -401,9 +464,14 @@ Copyright notice
 
 * * Generic Success and Error Responses
 
-    When the server receives a message from a client, the server may, at its own discretion, send either a Success message or an Error message to the client. This message notifies the client of the outcome of the client's message. The client must clearly and promptly display Success and Error messages when it receives them. 
+    When the server receives a message from a client, the server may, at its
+    own discretion, send either a Success message or an Error message to the
+    client. This message notifies the client of the outcome of the client's
+    message. The client must clearly and promptly display Success and Error
+    messages when it receives them. 
 
-    Note to implementers: these responses are not intended to uniquely identify a specific client message. 
+    Note to implementers: these responses are not intended to uniquely
+    identify a specific client message. 
 
 *.*.* Success
 
@@ -443,9 +511,14 @@ Copyright notice
 
     Sent by: server
 
-    Provides an informational message to a client. The client must clearly and promptly display Notice messages when it receives them.
+    Provides an informational message to a client. The client must clearly
+    and promptly display Notice messages when it receives them.
 
-    Note to implementers: servers are never required to send notice messages; these are simply provided as a way for the server to talk directly to clients when needed. It is permissible for a server not to use this message type. However, a client must correctly process notice messages as specified here.
+    Note to implementers: servers are never required to send notice messages;
+    these are simply provided as a way for the server to talk directly to
+    clients when needed. It is permissible for a server not to use this
+    message type. However, a client must correctly process notice messages
+    as specified here.
 
 *.*.* Format
 
