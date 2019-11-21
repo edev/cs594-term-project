@@ -199,6 +199,14 @@ module Chat
 
         def clean_up(client)
             @client_info_lock.synchronize do
+                # Notify everyone that the user has disconnected.
+                @clients.each_value do |c|
+                    if c == client
+                        next
+                    end
+                    c.send Notice.build("#{client.display_name} has disconnected.")
+                end
+
                 # Remove the client from all rooms. If any rooms are empty as a result, remove them.
                 @rooms.each do |room_name, member_list|
                     member_list.delete(client)
@@ -249,8 +257,16 @@ module Chat
                         return false
                     end
 
-                    # Everything checks out.
-                    @client_info_lock.synchronize { client.display_name = message[:displayName] }
+                    # Everything checks out. Set client.display_name and announce their arrival to others.
+                    @client_info_lock.synchronize do
+                        client.display_name = message[:displayName]
+                        @clients.each_value do |c|
+                            if c == client
+                                next
+                            end
+                            c.send Notice.build("#{client.display_name} has connected.")
+                        end
+                    end
                     client.send AcceptGreeting.build
                     return true
                 end
@@ -267,12 +283,12 @@ module Chat
                     message = client.receive
                 rescue Exception => e
                     STDERR.puts "Error: #{e.message}"
-                    return false
+                    return
                 end
 
                 case message
                 when :EOF
-                    return false
+                    return
                 when :SKIP
                     next
                 when JoinRoom
@@ -295,7 +311,8 @@ module Chat
                 when Say
                     speak(message[:room], message[:message], client)
                     room = message[:room]
-                    
+                when Disconnect
+                    return
                 else
                     STDOUT.puts "[Debug] unrecognized message received:"
                     p message

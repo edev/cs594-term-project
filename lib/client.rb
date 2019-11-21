@@ -95,21 +95,23 @@ module Chat
                 when :SKIP
                     next
                 when RoomList
-                    puts "Rooms:"
-                    message[:rooms].each { |r| puts "\t#{r}" }
+                    STDOUT.puts "Rooms:"
+                    message[:rooms].each { |r| STDOUT.puts "\t#{r}" }
                 when RoomMemberList
                     if message[:room] == ""
-                        puts "Members of default room:"
+                        STDOUT.puts "Members of default room:"
                     else
-                        puts "Members of #{message[:room]}:"
+                        STDOUT.puts "Members of #{message[:room]}:"
                     end
-                    message[:members].each { |m| puts "\t#{m}" }
+                    message[:members].each { |m| STDOUT.puts "\t#{m}" }
                 when Said
                     if message[:room] == ""
-                        puts "#{message[:sender]}: #{message[:message]}"
+                        STDOUT.puts "#{message[:sender]}: #{message[:message]}"
                     else
-                        puts "[#{message[:room]}] #{message[:sender]}: #{message[:message]}"
+                        STDOUT.puts "[#{message[:room]}] #{message[:sender]}: #{message[:message]}"
                     end
+                when Notice
+                    STDOUT.puts message[:message]
                 else
                     STDOUT.puts "[Debug] unrecognized message received:"
                     p message
@@ -152,7 +154,7 @@ module Chat
                 end
                 print CLI_PROMPT_TEXT
             end
-            # TODO Disconnect.
+            @socket.send Disconnect.build
             @socket.close
             exit(0)
         end

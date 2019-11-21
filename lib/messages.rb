@@ -255,4 +255,38 @@ module Chat
             @@matcher === other
         end
     end
+
+    class Disconnect
+        @@matcher = Matchers::hash(
+            type: "disconnect"
+        )
+
+        def self.build()
+            {
+                type: "disconnect"
+            }
+        end
+
+        def self.===(other)
+            @@matcher === other
+        end
+    end
+
+    class Notice
+        @@matcher = Matchers::hash(
+            type: "notice",
+            message: String
+        )
+
+        def self.build(message)
+            {
+                type: "notice",
+                message: message
+            }
+        end
+
+        def self.===(other)
+            @@matcher === other
+        end
+    end
 end
