@@ -119,6 +119,8 @@ module Chat
                     STDOUT.puts message[:message]
                 when Error
                     STDERR.puts message[:message]
+                when Whispered
+                    STDOUT.puts "(Whisper from #{message[:from]}): #{message[:message]}"
                 else
                     STDOUT.puts "[Debug] unrecognized message received:"
                     p message
@@ -154,9 +156,12 @@ module Chat
                 when Say.client_command
                     match = Say.client_command.match input
                     @socket.send Say.build(match[:room_name], match[:message])
+                when Whisper.client_command
+                    match = Whisper.client_command.match input
+                    @socket.send Whisper.build(match[:display_name], match[:message])
                 when %r{^/} # Any unrecognized slash command.
                     STDERR.puts "Unrecognized command."
-                else # Just normal text. Say it.
+                else # Just normal text. Say it to the default room.
                     @socket.send Say.build(room="", message=input)
                 end
                 print CLI_PROMPT_TEXT

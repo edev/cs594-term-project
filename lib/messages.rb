@@ -325,4 +325,52 @@ module Chat
             @@matcher === other
         end
     end
+
+    class Whisper
+        @@matcher = Matchers::hash(
+            type: "whisper",
+            to: /^\S+$/,
+            message: String
+        )
+
+        def self.build(recipient, message)
+            {
+                type: "whisper",
+                to: recipient,
+                message: message
+            }
+        end
+
+        def self.===(other)
+            @@matcher === other
+        end
+
+        ##
+        # /w <display_name> <message>
+        def self.client_command
+            /^\/w\s+(?<display_name>\S+) (?<message>.*)$/
+        end
+    end
+
+    class Whispered
+        @@matcher = Matchers::hash(
+            type: "whispered",
+            to: /^\S+$/,
+            from: /^\S+$/,
+            message: String
+        )
+
+        def self.build(recipient, sender, message)
+            {
+                type: "whispered",
+                to: recipient,
+                from: sender,
+                message: message
+            }
+        end
+
+        def self.===(other)
+            @@matcher === other
+        end
+    end
 end

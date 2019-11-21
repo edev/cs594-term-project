@@ -192,6 +192,29 @@ module Chat
             end
         end
 
+        ##
+        # Attempts to look up the intended recipient of a whisper and route the message.
+        #
+        # Returns (outbound_client, message), where outbound_client is the Client object
+        # to which the message should be delivered. The message may be a Whispered
+        # message for the intended recipient or an Error message to be returned to the
+        # sender.
+        #
+        # to: the display_name of the intended recipient.
+        # from: the Client object of the sender.
+        # message: the message to be whispered.
+        def whisper(to, from, message)
+            @client_info_lock.synchronize do
+                if @clients.has_key? to
+                    # Success!
+                    return @clients[to], Whispered.build(to, from.display_name, message)
+                else
+                    # No such client. Return an error message.
+                    return from, Error.build("Could not find a client named #{to}.")
+                end
+            end
+        end
+
         def accept
             @tcpServer.accept
         end
@@ -314,6 +337,9 @@ module Chat
                     room = message[:room]
                 when Disconnect
                     return
+                when Whisper
+                    recipient, message = whisper(message[:to], client, message[:message])
+                    recipient.socket.send message
                 else
                     STDOUT.puts "[Debug] unrecognized message received:"
                     p message
