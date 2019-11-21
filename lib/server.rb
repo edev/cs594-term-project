@@ -76,15 +76,6 @@ module Chat
             true
         end
 
-        private def each_socket(&block)
-            if !block_given?
-                raise ArgumentError.new "Expected a block, but none was provided."
-            end
-
-            # TODO synchronize and, within that, loop over all clients, invoking block.
-            raise Exception.new "Not yet implemented."
-        end
-
         ##
         # Removes client from the named room. If client was the last member of the room, deletes the room.
         #
@@ -151,6 +142,54 @@ module Chat
             else
                 # TODO build an Error message.
                 STDERR.puts "Room #{name} does not exist."
+            end
+        end
+
+        ##
+        # Causes a speaker to speak a message to a room. Assuming the speaker has a message and is actually
+        # a member of the room (which may be the default room), all other members of the room will receive
+        # Said messages. In case of any error, the speaker will receive an Error message.
+        #
+        # Due to the complex, multicast nature of this speaking to a room, this method sends data itself.
+        private def speak(room, message, speaker)
+            @client_info_lock.synchronize do
+                if message.nil?
+                    # TODO Send an Error message.
+                    speaker.send({ msg: "Message cannot be nil." })
+                    return
+                end
+
+                if room == ""
+                    # Default room. No further checks needed; anyone can speak.
+                    @clients.each_value do |client|
+                        if client == speaker
+                            next
+                        end
+                        client.send Said.build(room, message, speaker.display_name)
+                    end
+                else
+                    # Named room. Ensure that it exists.
+                    unless @rooms.has_key? room
+                        # TODO Send an Error message.
+                        speaker.send({ msg: "Room #{room} does not exist." })
+                        return
+                    end
+
+                    # Ensure that the speaker is i nthe room.
+                    unless @rooms[room].include? speaker
+                        # TODO Send an Error message.
+                        speaker.send({ msg: "You are not a member of #{room}." })
+                        return
+                    end
+
+                    # Everything checks out. Speak to the room.
+                    @rooms[room].each do |client|
+                        if client == speaker
+                            next
+                        end
+                        client.send Said.build(room, message, speaker.display_name)
+                    end
+                end
             end
         end
 
@@ -253,6 +292,10 @@ module Chat
                     end
                 when RequestRoomMemberList
                     client.send room_members(message[:name])
+                when Say
+                    speak(message[:room], message[:message], client)
+                    room = message[:room]
+                    
                 else
                     STDOUT.puts "[Debug] unrecognized message received:"
                     p message

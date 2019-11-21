@@ -104,6 +104,12 @@ module Chat
                         puts "Members of #{message[:room]}:"
                     end
                     message[:members].each { |m| puts "\t#{m}" }
+                when Said
+                    if message[:room] == ""
+                        puts "#{message[:sender]}: #{message[:message]}"
+                    else
+                        puts "[#{message[:room]}] #{message[:sender]}: #{message[:message]}"
+                    end
                 else
                     STDOUT.puts "[Debug] unrecognized message received:"
                     p message
@@ -116,9 +122,9 @@ module Chat
         def prompt
             print CLI_PROMPT_TEXT
             while input = STDIN.gets
-                input.strip!
+                input.chomp!
                 case input
-                when ""
+                when /^\s*$/
                     # The user entered an empty line.
                     next
                 when /^\/quit$/i
@@ -136,11 +142,13 @@ module Chat
                 when RequestRoomMemberList.client_command
                     match = RequestRoomMemberList.client_command.match input
                     @socket.send RequestRoomMemberList.build(match[:room_name])
+                when Say.client_command
+                    match = Say.client_command.match input
+                    @socket.send Say.build(match[:room_name], match[:message])
                 when %r{^/} # Any unrecognized slash command.
                     STDERR.puts "Unrecognized command."
                 else # Just normal text. Say it.
-                    # TODO say.
-                    @socket.send({ message: input })
+                    @socket.send Say.build(room="", message=input)
                 end
                 print CLI_PROMPT_TEXT
             end

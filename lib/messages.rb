@@ -188,9 +188,9 @@ module Chat
 
     class RoomMemberList
         @@matcher = Matchers::hash(
-          "type": "roomMemberList",
-          "room": String,
-          "members": Array
+          type: "roomMemberList",
+          room: String,
+          members: Array
         )
 
         def self.build(room, members)
@@ -198,6 +198,56 @@ module Chat
                 "type": "roomMemberList",
                 "room": room,
                 "members": members
+            }
+        end
+
+        def self.===(other)
+            @@matcher === other
+        end
+    end
+
+    class Say
+        @@matcher = Matchers::hash(
+            type: "say",
+            room: String,
+            message: String
+        )
+
+        def self.build(room, message)
+            {
+                type: "say",
+                room: room,
+                message: message
+            }
+        end
+
+        def self.===(other)
+            @@matcher === other
+        end
+
+        ##
+        # /say <room_name> <message>
+        #
+        # <message> may contain spaces; room_name may not.
+        def self.client_command
+            %r{/say\s+(?<room_name>\S+)\s(?<message>.+)}
+        end
+    end
+
+    class Said
+        @@matcher = Matchers::hash(
+            type: "said",
+            room: String,
+            message: String,
+            sender: String
+        )
+
+        def self.build(room, message, sender)
+            {
+                type: "said",
+                room: room,
+                message: message,
+                sender: sender
             }
         end
 
