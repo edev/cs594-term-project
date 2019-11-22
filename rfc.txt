@@ -26,9 +26,72 @@ Copyright notice
 
     Copyright (c) 2019 Dylan Laufenberg. All rights reserved.
 
-<< TABLE OF CONTENTS >>
+Table of contents
 
-* Introduction
+    1 Introduction
+    2 Required features
+    3 Extra features
+    4 Reference implementation
+    5 General conventions
+    6 Communication flow
+    7 Rooms
+    8 Success, Error, and Notice messages
+    9 Messages
+    9.1 Greeting
+    9.1.1 Format
+    9.1.2 Fields
+    9.2 Greeting Responses
+    9.2.1 Accept Greeting
+    9.2.1.1 Format
+    9.2.2 Decline Greeting
+    9.2.2.1 Format
+    9.2.2.2 Fields
+    9.3 Join Room
+    9.3.1 Format
+    9.3.2 Fields
+    9.4 Request Room List
+    9.4.1 Format
+    9.5 Room List
+    9.5.1 Format
+    9.5.2 Fields
+    9.6 Leave Room
+    9.6.1 Format
+    9.6.2 Fields
+    9.7 Request Room Member List
+    9.7.1 Format
+    9.7.2 Fields
+    9.8 Room Member List
+    9.8.1 Format
+    9.8.2 Fields
+    9.9 Say
+    9.9.1 Format
+    9.9.2 Fields
+    9.10 Said
+    9.10.1 Format
+    9.10.2 Fields
+    9.11 Whisper
+    9.11.1 Format
+    9.11.2 Fields
+    9.12 Whispered
+    9.12.1 Format
+    9.12.2 Fields
+    9.13 Disconnect
+    9.13.1 Format
+    9.14 Generic Success and Error Responses
+    9.14.1 Success
+    9.14.1.1 Format
+    9.14.1.2 Fields
+    9.14.2 Error
+    9.14.2.1 Format
+    9.14.2.2 Fields
+    9.15 Notice
+    9.15.1 Format
+    9.15.2 Fields
+    10 Handling errors
+    11 Security
+    12 Conclusion
+
+1 Introduction
 
     This specification describes the Internet Relay Class (IRC) protocol,
     not to be confused with the common Internet Relay Chat (IRC) protocol. The
@@ -37,7 +100,7 @@ Copyright notice
 
     The list of features follows.
 
-* Required features
+2 Required features
 
     The protocol below defines, and the client and server implement, the
     following required features of the rubric. The following listing maps
@@ -104,12 +167,12 @@ Copyright notice
         to a server, it detects the disconnection, informs the user, and
         exits peacefully rather than crashing.
 
-* Extra features
+3 Extra features
 
     The protocol additionally provides private messaging through the Whisper
     and Whispered messages.
 
-* Reference implementation
+4 Reference implementation
 
     The reference implementation, written in Ruby, is available at:
 
@@ -117,14 +180,14 @@ Copyright notice
 
     It is written for Ruby 2.6.3.
 
-* General conventions
+5 General conventions
 
     All fields in all messages are required unless they are noted as optional.
 
     If a required field is blank, empty, or missing, the recipient must ignore
     the message.
 
-* Communication flow
+6 Communication flow
 
     All communication between server and client takes place over a direct TCP
     connection between the two. Allowed messages are restricted to the
@@ -158,7 +221,7 @@ Copyright notice
     If any party receives a message that violates this communication flow, the
     recipient must ignore the message.
 
-* Rooms
+7 Rooms
 
     A room, AKA a chat room, is a named list of clients. Messages sent to a
     room will be broadcast to all other clients in the room. A client may join
@@ -170,7 +233,7 @@ Copyright notice
     clients connected to the server who have been sent an Accept Greeting
     message.
 
-* Success, Error, and Notice messages
+8 Success, Error, and Notice messages
 
     Certain messages have expected responses. For instance, a client that
     sends a Greeting message (at the correct time) can expect a Greeting
@@ -181,9 +244,9 @@ Copyright notice
     for informational purposes at its own discretion. See the relevant
     message types for details.
 
-* Messages
+9 Messages
 
-*.* Greeting
+9.1 Greeting
 
     Sent by: client
 
@@ -191,7 +254,7 @@ Copyright notice
     provide the server with the opportunity to accept or decline. The message
     is kept as brief as possible for version compatibility. 
 
-*.*.* Format
+9.1.1 Format
 
     {
         "type": "greeting",
@@ -199,7 +262,7 @@ Copyright notice
         "displayName": name
     }
 
-*.*.* Fields
+9.1.2 Fields
 
     - version_number: a string indicating which version of the protocol the
       client is using. Ex: "0.0.1"
@@ -209,7 +272,7 @@ Copyright notice
       restrictions on name, e.g. on length, format, content, etc. A name may
       not contain whitespace characters. Ex: "joe_smith"
 
-*.* Greeting Responses
+9.2 Greeting Responses
         
     Sent by: server
 
@@ -218,22 +281,22 @@ Copyright notice
     Otherwise, the server may accept or decline the greeting based on its own,
     arbitrary policies.
 
-*.*.* Accept Greeting
+9.2.1 Accept Greeting
 
     Indicates that the server accept the client's greeting.
 
-*.*.*.* Format
+9.2.1.1 Format
 
     {
         "type": "greetingResponse",
         "response": "accept"
     }
 
-*.*.* Decline Greeting
+9.2.2 Decline Greeting
 
     Indicates that the server declines the client's greeting.
 
-*.*.*.* Format
+9.2.2.1 Format
 
     {
         "type": "greetingResponse",
@@ -241,31 +304,31 @@ Copyright notice
         "reason": reason
     }
 
-*.*.*.*.* Fields
+9.2.2.2 Fields
 
     - reason: a human-readable explanation string suitable to be displayed as
       an error message.
 
-*.* Join Room
+9.3 Join Room
 
     Sent by: client
 
     Indicates that the client wishes to join the named room. The room will be
     created if it does not already exist.
 
-*.*.* Format
+9.3.1 Format
 
     {
         "type": "joinRoom",
         "name": name
     }
 
-*.*.* Fields
+9.3.2 Fields
 
     - name: The name of the room to create. A room name may not contain
       whitespace characters.
 
-*.* Request Room List
+9.4 Request Room List
 
     Sent by: client
 
@@ -273,49 +336,49 @@ Copyright notice
 
     The server's respones is a Room List message.
 
-*.*.* Format
+9.4.1 Format
 
     {
         "type": "requestRoomList"
     }
 
-*.* Room List
+9.5 Room List
 
     Sent by: server
 
     Provides a complete list of all current rooms on the server. This message
     is sent in response to a Request Room List message.
 
-*.*.* Format
+9.5.1 Format
 
     {
         "type": "roomList",
         "rooms": roomList
     }
 
-*.*.* Fields
+9.5.2 Fields
 
     - roomList: a JSON list of room names. Rooms may be listed in any order.
       Ex: ["general", "project_questions"]
 
-*.* Leave Room
+9.6 Leave Room
 
     Sent by: client
 
     Directs the server to remove the client from the named room (if it exists).
 
-*.*.* Format
+9.6.1 Format
 
     {
         "type": "leaveRoom",
         "name": name
     }
 
-*.*.* Fields
+9.6.2 Fields
 
     name: the name of the room that the client wishes to leave.
 
-*.* Request Room Member List
+9.7 Request Room Member List
 
     Sent by: client
 
@@ -323,18 +386,18 @@ Copyright notice
 
     The server's respones is a Room Member List message.
 
-*.*.* Format
+9.7.1 Format
 
     {
         "type": "requestRoomMemberList",
         "name": name
     }
 
-*.*.* Fields
+9.7.2 Fields
 
     name: the name of the room. To specify the default room, use "".
 
-*.* Room Member List
+9.8 Room Member List
 
     Sent by: server
 
@@ -342,7 +405,7 @@ Copyright notice
     server. This message is sent in response to a Request Room Member List
     message.
 
-*.*.* Format
+9.8.1 Format
 
     {
         "type": "roomMemberList",
@@ -350,14 +413,14 @@ Copyright notice
         "members": roomMemberList
     }
 
-*.*.* Fields
+9.8.2 Fields
 
     - room: the name of the room.
 
     - roomMemberList: a JSON list of client names. Clients may be listed in
       any order. Ex: ["mikey2022", "fred.m"]
 
-*.* Say
+9.9 Say
 
     Sent by: client
 
@@ -367,7 +430,7 @@ Copyright notice
     the specified room. If so, the server sends a Said message to each client
     in the room except the client who sent the Say message.
 
-*.*.* Format
+9.9.1 Format
 
     {
         "type": "say",
@@ -375,20 +438,20 @@ Copyright notice
         "message": message
     }
 
-*.*.* Fields
+9.9.2 Fields
 
     - room: the name of the room to which the message is being sent. To
       specify the default room, use "".
 
     - message: the message being sent to the room.
 
-*.* Said
+9.10 Said
 
     Sent by: server
 
     Informs a client that another client sent a message to a room.
 
-*.*.* Format
+9.10.1 Format
 
     {
         "type": "said",
@@ -397,7 +460,7 @@ Copyright notice
         "sender": sender
     }
 
-*.*.* Fields
+9.10.2 Fields
 
     - room: the name of the room to which the message is being sent.
       To specify the default room, use "".
@@ -406,13 +469,13 @@ Copyright notice
 
     - sender: the displayName of the client who sent the message.
 
-*.* Whisper
+9.11 Whisper
 
     Sent by: client
 
     Sends a message to one other, specific, named client.
 
-*.*.* Format
+9.11.1 Format
 
     {
         "type": "whisper",
@@ -420,19 +483,19 @@ Copyright notice
         "message": message
     }
 
-*.*.* Fields
+9.11.2 Fields
 
     - recipient: the name of the client who should receive the message.
 
     - message: the message being sent to the receiver.
 
-*.* Whispered
+9.12 Whispered
 
     Sent by: server
 
     Informs a client that another client has sent them a private message.
 
-*.*.* Format
+9.12.1 Format
 
     {
         "type": "whispered",
@@ -441,7 +504,7 @@ Copyright notice
         "message": message
     }
 
-*.*.* Fields
+9.12.2 Fields
 
     - recipient: the name of the client who should receive the message.
 
@@ -449,20 +512,20 @@ Copyright notice
 
     - message: the message being sent to the receiver.
 
-*.* Disconnect
+9.13 Disconnect
 
     Sent by: server or client
 
     Informs the receiving party that the sending party intends to terminate
     the connection.
 
-*.*.* Format
+9.13.1 Format
 
     {
         "type": "disconnect",
     }
 
-* * Generic Success and Error Responses
+9.14 Generic Success and Error Responses
 
     When the server receives a message from a client, the server may, at its
     own discretion, send either a Success message or an Error message to the
@@ -473,41 +536,41 @@ Copyright notice
     Note to implementers: these responses are not intended to uniquely
     identify a specific client message. 
 
-*.*.* Success
+9.14.1 Success
 
     Sent by: server
 
     Notifies a client that a previous message was successfully processed. 
 
-*.*.*.* Format
+9.14.1.1 Format
 
     {
         "type": "success",
         "message": message
     }
 
-*.*.*.* Fields
+9.14.1.2 Fields
 
     - message: the text to be displayed in the client application.
 
-*.*.* Error
+9.14.2 Error
 
     Sent by: server
 
     Notifies a client that a previous message could not be processed. 
 
-*.*.*.* Format
+9.14.2.1 Format
 
     {
         "type": "error",
         "message": message
     }
 
-*.*.*.* Fields
+9.14.2.2 Fields
 
     - message: the text to be displayed in the client application.
 
-*.* Notice
+9.15 Notice
 
     Sent by: server
 
@@ -520,18 +583,18 @@ Copyright notice
     message type. However, a client must correctly process notice messages
     as specified here.
 
-*.*.* Format
+9.15.1 Format
 
     {
         "type": "notice",
         "message": message
     }
 
-*.*.* Fields
+9.15.2 Fields
 
     - message: the text to be displayed in the client application.
 
-* Handling errors
+10 Handling errors
 
     Both the client and the server must detect the closure of the TCP
     connection. If the client detects a closed TCP connection, it must exit
@@ -541,14 +604,14 @@ Copyright notice
     inform other clients of the client's departure via a Notice mssage, but
     this is left to the discretion of the implementer.
 
-* Security
+11 Security
 
     This protocol makes no consideration for security, as security is beyond
     the purview of the class project. This protocol is not suitable for
     production use, nor is the reference implementation of either the client
     or the server.
 
-* Conclusion
+12 Conclusion
 
     This specification provides a JSON-based protocol for sending text messages
     among clients, using a server as a central relay.

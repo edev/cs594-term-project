@@ -1,0 +1,140 @@
+#!/usr/bin/env ruby
+
+##
+# This script generates a table of contents for a document and inserts it in
+# the document at a specified location.
+#
+# Called without any arguments, the script reads from standard input.
+# Alternately, a list of source files may be provided as command-line options.
+# The result is written to standard output.
+#
+# To make an entry in the table of contents, begin a line with one or more
+# stars separated by periods (with no leading whitespace). The number of
+# stars indicates the nesting level. For instance,
+#
+# * Intro
+#
+# creates a top-level entry called Introduction, and
+#
+# *.* Details
+#
+# creates a second-level entry called Details.
+#
+# Where the table of contents should be inserted, place the following on its
+# own line, with no leading whitespace:
+#
+# << TABLE OF CONTENTS >>
+#
+# To customize this tag, see the constants below.
+
+##
+# Constants to customize script behavior.
+
+# This value, when found on its own line, will be replaced with the actual
+# table of contents.
+TOC_FLAG = "<< TABLE OF CONTENTS >>"
+
+# The first number in the table of contents.
+START_NUM = 1
+
+# The number of spaces to indent entries in the table of contents
+TOC_INDENT = 4
+
+##
+# Script state variables.
+
+# The full input, one line at a time, will be written here.
+@lines = []
+
+# The table of contents, built as we go.
+@toc = []
+
+# Counters for each level; index 0 is top-level, index 1 is second-level, etc.
+# Each index the current section number at that next level (if any).
+@counters = [START_NUM - 1]
+
+##
+# Returns the numeric counter for a particular nesting level, where 1 is the
+# top level. Updates @counters as well.
+def counter(level)
+    if level < 1
+        raise ArgumentError.new "level must be >= 1."
+    elsif level > @counters.length + 1
+        raise ArgumentError.new(
+          "Cannot create a entry for level #{level} inside nesting level #{@counters.length}."
+        )
+    end
+    
+    # The index into @counters.
+    idx = level - 1
+    
+    # Make any necessary structural changes to @counters.
+    if level < @counters.length
+        # We're going to a shallower level of nesting, so we have to clear out
+        # any counters for deeper levels.
+        @counters = @counters[0, level]
+    elsif level == @counters.length + 1
+        # We're dding a nesting level.
+        @counters << START_NUM - 1
+    end
+
+    @counters[idx] += 1
+    return @counters
+end
+
+##
+# Process a given line, with one of three return values:
+#
+#   Lines starting star sequences:
+#       Numbers are substituted for the stars.
+#       Returns :toc_entry, line
+#
+#   Lines that match TOC_FLAG:
+#       Returns :toc_flag
+#
+#   Normal lines:
+#       returns :text, line
+def process(line)
+    star_pattern = /^\*(\.\*)*/
+    if star_pattern =~ line
+        # The line needs a TOC entry.
+        level = star_pattern.match(line).string.count("*")
+        toc_string = counter(level).join(".")
+        line = line.sub(star_pattern, toc_string)
+        return :toc_entry, line
+    elsif line == TOC_FLAG
+        return :toc_flag
+    else
+        # The line gets returned as-is.
+        return :text, line
+    end
+end
+
+##
+# Process the whole file.
+line_index = 0
+while line = gets
+    line.chomp!
+    type, line = process(line)
+    case type
+    when :toc_entry
+        @toc << line
+        @lines << line
+    when :toc_flag
+        @lines << :toc_flag
+    when :text
+        @lines << line
+    end
+    line_index += 1
+end
+
+##
+# Now print the final output.
+@lines.each do |l|
+    case l
+    when String
+        STDOUT.puts l
+    when :toc_flag
+        @toc.each {|t| STDOUT.puts (" " * TOC_INDENT) + t }
+    end
+end

@@ -1,0 +1,556 @@
+CS 594
+Internet Draft                                        Portland State University
+Intended status: IRC Class Project Specification               December 6, 2019 
+Expires: June 2020
+
+                          Internet Relay Class Protocol
+
+Status of this memo
+
+    This memo defines an Experimental Protocol for the Internet
+    community.  Discussion and suggestions for improvement are requested.
+    Please refer to the current edition of the "IAB Official Protocol
+    Standards" for the standardization state and status of this protocol.
+    Distribution of this memo is unlimited.
+
+Abstract
+
+    The Internet Relay Class (IRC) protocol over the last six weeks of fall
+    term in 2019 at Portland State University for the class CS 594:
+    Internetworking Protocols. The protocol responds to specified project
+    rubric.
+
+    IRC is a JSON-based protocol written for a client-server application model.
+
+Copyright notice
+
+    Copyright (c) 2019 Dylan Laufenberg. All rights reserved.
+
+Table of contents
+
+<< TABLE OF CONTENTS >>
+
+* Introduction
+
+    This specification describes the Internet Relay Class (IRC) protocol,
+    not to be confused with the common Internet Relay Chat (IRC) protocol. The
+    protocol utilizes a client-server architecture whereby the server relays
+    messages among clients.
+
+    The list of features follows.
+
+* Required features
+
+    The protocol below defines, and the client and server implement, the
+    following required features of the rubric. The following listing maps
+    rubric line items to the message types below that provide the corresponding
+    functionality:
+
+    3.  Client can connect to a server: Greeting, Accept Greeting, 
+        Decline Greeting.
+
+    4.  Client can create a room: Join Room.
+
+        Explanation: If the room does not exist, it will be created.
+
+    5.  Client can list all rooms: Request Room List, Room List.
+
+    6.  Client can join a room: Join Room.
+
+    7.  Client can leave a room: Leave Room.
+
+    8.  Client can list members of a room: Request Room Member List, Room
+        Member List
+
+    10. Client can send messages to a room: Say, Said.
+
+    11. Client can join multiple (selected) rooms: Join Room.
+
+    12. Client can send distinct messages to multiple (selected) rooms: Say,
+        Said.
+
+    13. Client can disconnect from a server: Disconnect.
+
+    14. Server can disconnect from clients: Disconnect.
+
+    The implementation is responsible for the following rubric line items, as
+    they do not require changes to protocol design:
+
+    2.  Server Process
+
+        In the reference implementation of the protocol, the server process is
+        defined in /lib/server.rb and run via /server. It is a single-process,
+        multi-threaded application that communicates via TCP sockets. The main
+        thread accepts connections and spawns a new thread for each. A separate
+        "prompt thread" accepts terminal input on the server side and processes
+        it, though the only supported commands are /exit and /quit, both of
+        which gracefully shut down the server.
+
+    9.  Multiple clients can connect to a server
+
+        The protocol places no restrictions on the number of conccurent clients
+        on a server. In the reference implementation, the practical limit is
+        determined by the naive data structures used to track clients and
+        rooms, the performance of Ruby threads, or the use of a global lock
+        to synchronize all data structures.
+
+    15. Server can gracefully handle client crashes.
+
+        When a client crashes, the server treats it just like a graceful client
+        disconnect, sending all remaining clients a Notice message to inform
+        them that a client has disconnected.
+
+    16. Client can gracefully handle server crashes.
+
+        Although the client cannot continue to operate without a connection
+        to a server, it detects the disconnection, informs the user, and
+        exits peacefully rather than crashing.
+
+* Extra features
+
+    The protocol additionally provides private messaging through the Whisper
+    and Whispered messages.
+
+* Reference implementation
+
+    The reference implementation, written in Ruby, is available at:
+
+    https://github.com/edev/cs594-term-project
+
+    It is written for Ruby 2.6.3.
+
+* General conventions
+
+    All fields in all messages are required unless they are noted as optional.
+
+    If a required field is blank, empty, or missing, the recipient must ignore
+    the message.
+
+* Communication flow
+
+    All communication between server and client takes place over a direct TCP
+    connection between the two. Allowed messages are restricted to the
+    following flow:
+
+    1.  Immediately after establishing a connection to the server, the client
+    sends a Greeting message.
+
+    2.  The server either accepts or declines the Greeting, notifying the 
+        client by sending the corresponding response message. If the server
+        declines the Greeting, it should close the TCP connection after sending
+        its response message.
+
+    3.  Upon receiving a greeting response:
+
+        a.  accept: the client may now send any client message except
+            another greeting.
+
+        b.  decline: the client should expect the server to close the
+            connection. The client may also terminate the connection itself.
+
+    Either party may send Disconnect messages at any time an open TCP
+    connection exists; these messages are not subject to the control flow
+    above. When any party sends or receives a Disconnect message, all
+    communication among the involved parties must cease immediately, and
+    both parties must terminate the connection gracefully. When a client
+    sends the server a Disconnect message, the server must end the connection
+    with the client but remain operational and connected to any other clients
+    that may be connected to the server.
+
+    If any party receives a message that violates this communication flow, the
+    recipient must ignore the message.
+
+* Rooms
+
+    A room, AKA a chat room, is a named list of clients. Messages sent to a
+    room will be broadcast to all other clients in the room. A client may join
+    or leave the room at will. A room will exist for as long as at least one
+    client is present in the room.
+
+    The default room is a nameless room that clients automatically join and
+    may not leave. The list of clients in the default room is the list of
+    clients connected to the server who have been sent an Accept Greeting
+    message.
+
+* Success, Error, and Notice messages
+
+    Certain messages have expected responses. For instance, a client that
+    sends a Greeting message (at the correct time) can expect a Greeting
+    Response message. However, the protocol intentionally lacks specific
+    responses for most messages in order to avoid unnecessary complexity in
+    the protocol's design. Instead, the protocol defines general-purpose
+    Success, Error, and Notice messages that the server may send to clients
+    for informational purposes at its own discretion. See the relevant
+    message types for details.
+
+* Messages
+
+*.* Greeting
+
+    Sent by: client
+
+    The purpose of the greeting message is to request to join chat and
+    provide the server with the opportunity to accept or decline. The message
+    is kept as brief as possible for version compatibility. 
+
+*.*.* Format
+
+    {
+        "type": "greeting",
+        "version": version_number 
+        "displayName": name
+    }
+
+*.*.* Fields
+
+    - version_number: a string indicating which version of the protocol the
+      client is using. Ex: "0.0.1"
+
+    - name: the name by which client would like to be known. The protocol does
+      not restrict name length, but servers may set their own, arbitrary
+      restrictions on name, e.g. on length, format, content, etc. A name may
+      not contain whitespace characters. Ex: "joe_smith"
+
+*.* Greeting Responses
+        
+    Sent by: server
+
+    The server either accepts or declines a greeting. If the server does not
+    support the specified protocol version, it must decline the greeting.
+    Otherwise, the server may accept or decline the greeting based on its own,
+    arbitrary policies.
+
+*.*.* Accept Greeting
+
+    Indicates that the server accept the client's greeting.
+
+*.*.*.* Format
+
+    {
+        "type": "greetingResponse",
+        "response": "accept"
+    }
+
+*.*.* Decline Greeting
+
+    Indicates that the server declines the client's greeting.
+
+*.*.*.* Format
+
+    {
+        "type": "greetingResponse",
+        "response": "decline",
+        "reason": reason
+    }
+
+*.*.*.* Fields
+
+    - reason: a human-readable explanation string suitable to be displayed as
+      an error message.
+
+*.* Join Room
+
+    Sent by: client
+
+    Indicates that the client wishes to join the named room. The room will be
+    created if it does not already exist.
+
+*.*.* Format
+
+    {
+        "type": "joinRoom",
+        "name": name
+    }
+
+*.*.* Fields
+
+    - name: The name of the room to create. A room name may not contain
+      whitespace characters.
+
+*.* Request Room List
+
+    Sent by: client
+
+    Requests a complete list of all current rooms on the server.
+
+    The server's respones is a Room List message.
+
+*.*.* Format
+
+    {
+        "type": "requestRoomList"
+    }
+
+*.* Room List
+
+    Sent by: server
+
+    Provides a complete list of all current rooms on the server. This message
+    is sent in response to a Request Room List message.
+
+*.*.* Format
+
+    {
+        "type": "roomList",
+        "rooms": roomList
+    }
+
+*.*.* Fields
+
+    - roomList: a JSON list of room names. Rooms may be listed in any order.
+      Ex: ["general", "project_questions"]
+
+*.* Leave Room
+
+    Sent by: client
+
+    Directs the server to remove the client from the named room (if it exists).
+
+*.*.* Format
+
+    {
+        "type": "leaveRoom",
+        "name": name
+    }
+
+*.*.* Fields
+
+    name: the name of the room that the client wishes to leave.
+
+*.* Request Room Member List
+
+    Sent by: client
+
+    Requests a complete list of all clients in a specific room.
+
+    The server's respones is a Room Member List message.
+
+*.*.* Format
+
+    {
+        "type": "requestRoomMemberList",
+        "name": name
+    }
+
+*.*.* Fields
+
+    name: the name of the room. To specify the default room, use "".
+
+*.* Room Member List
+
+    Sent by: server
+
+    Provides a complete list of all current members of a specific room on the
+    server. This message is sent in response to a Request Room Member List
+    message.
+
+*.*.* Format
+
+    {
+        "type": "roomMemberList",
+        "room": room,
+        "members": roomMemberList
+    }
+
+*.*.* Fields
+
+    - room: the name of the room.
+
+    - roomMemberList: a JSON list of client names. Clients may be listed in
+      any order. Ex: ["mikey2022", "fred.m"]
+
+*.* Say
+
+    Sent by: client
+
+    Sends a chat message to a room.
+
+    Upon receipt of this message, the server verifies that the client is in
+    the specified room. If so, the server sends a Said message to each client
+    in the room except the client who sent the Say message.
+
+*.*.* Format
+
+    {
+        "type": "say",
+        "room": room,
+        "message": message
+    }
+
+*.*.* Fields
+
+    - room: the name of the room to which the message is being sent. To
+      specify the default room, use "".
+
+    - message: the message being sent to the room.
+
+*.* Said
+
+    Sent by: server
+
+    Informs a client that another client sent a message to a room.
+
+*.*.* Format
+
+    {
+        "type": "said",
+        "room": room,
+        "message": message,
+        "sender": sender
+    }
+
+*.*.* Fields
+
+    - room: the name of the room to which the message is being sent.
+      To specify the default room, use "".
+
+    - message: the message being sent to the room.
+
+    - sender: the displayName of the client who sent the message.
+
+*.* Whisper
+
+    Sent by: client
+
+    Sends a message to one other, specific, named client.
+
+*.*.* Format
+
+    {
+        "type": "whisper",
+        "to": recipient,
+        "message": message
+    }
+
+*.*.* Fields
+
+    - recipient: the name of the client who should receive the message.
+
+    - message: the message being sent to the receiver.
+
+*.* Whispered
+
+    Sent by: server
+
+    Informs a client that another client has sent them a private message.
+
+*.*.* Format
+
+    {
+        "type": "whispered",
+        "to": recipient,
+        "from": sender,
+        "message": message
+    }
+
+*.*.* Fields
+
+    - recipient: the name of the client who should receive the message.
+
+    - sender: the name of the client who sent the message.
+
+    - message: the message being sent to the receiver.
+
+*.* Disconnect
+
+    Sent by: server or client
+
+    Informs the receiving party that the sending party intends to terminate
+    the connection.
+
+*.*.* Format
+
+    {
+        "type": "disconnect",
+    }
+
+*.* Generic Success and Error Responses
+
+    When the server receives a message from a client, the server may, at its
+    own discretion, send either a Success message or an Error message to the
+    client. This message notifies the client of the outcome of the client's
+    message. The client must clearly and promptly display Success and Error
+    messages when it receives them. 
+
+    Note to implementers: these responses are not intended to uniquely
+    identify a specific client message. 
+
+*.*.* Success
+
+    Sent by: server
+
+    Notifies a client that a previous message was successfully processed. 
+
+*.*.*.* Format
+
+    {
+        "type": "success",
+        "message": message
+    }
+
+*.*.*.* Fields
+
+    - message: the text to be displayed in the client application.
+
+*.*.* Error
+
+    Sent by: server
+
+    Notifies a client that a previous message could not be processed. 
+
+*.*.*.* Format
+
+    {
+        "type": "error",
+        "message": message
+    }
+
+*.*.*.* Fields
+
+    - message: the text to be displayed in the client application.
+
+*.* Notice
+
+    Sent by: server
+
+    Provides an informational message to a client. The client must clearly
+    and promptly display Notice messages when it receives them.
+
+    Note to implementers: servers are never required to send notice messages;
+    these are simply provided as a way for the server to talk directly to
+    clients when needed. It is permissible for a server not to use this
+    message type. However, a client must correctly process notice messages
+    as specified here.
+
+*.*.* Format
+
+    {
+        "type": "notice",
+        "message": message
+    }
+
+*.*.* Fields
+
+    - message: the text to be displayed in the client application.
+
+* Handling errors
+
+    Both the client and the server must detect the closure of the TCP
+    connection. If the client detects a closed TCP connection, it must exit
+    gracefully. If the server detects a closed TCP connection to a client,
+    it must remove that client from all rooms (including the default room),
+    and remove any rooms that become empty as a result of this process. It may
+    inform other clients of the client's departure via a Notice mssage, but
+    this is left to the discretion of the implementer.
+
+* Security
+
+    This protocol makes no consideration for security, as security is beyond
+    the purview of the class project. This protocol is not suitable for
+    production use, nor is the reference implementation of either the client
+    or the server.
+
+* Conclusion
+
+    This specification provides a JSON-based protocol for sending text messages
+    among clients, using a server as a central relay.
