@@ -1,4 +1,4 @@
-CS 594
+CS 594                                                         Dylan Laufenberg
 Internet Draft                                        Portland State University
 Intended status: IRC Class Project Specification               December 6, 2019 
 Expires: June 2020
