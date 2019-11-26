@@ -295,6 +295,16 @@ module Chat
             end
         end
 
+        def help
+            <<~END
+
+            Supported commands:
+                /quit or /exit - disconnect from the server and quit the program.
+                /? or /help - print this list of commands.
+
+            END
+        end
+
         ##
         # Listens to input on a socket and responds.
         #
@@ -358,6 +368,10 @@ module Chat
                     break
                 when /^\/exit$/i
                     break
+                when /^\/\?$/
+                    STDOUT.puts help
+                when /^\/help$/i
+                    STDOUT.puts help
                 else
                     STDERR.puts "Unrecognized command."
                 end
@@ -377,6 +391,8 @@ module Chat
         # Starts the server using default options and behavior.
         def start
             STDOUT.puts "Starting server on port #{@port}."
+            STDOUT.puts help
+
             # First, start a prompt thread.
             @prompt_thread = Thread.new { prompt }
 

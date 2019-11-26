@@ -63,7 +63,8 @@ module Chat
                     # Malformed packet. Ignore it and keep listening.
                     next
                 when AcceptGreeting
-                    STDOUT.puts "Connected to server."
+                    STDOUT.puts "Connected to server!"
+                    STDOUT.puts help
                     break
                 when DeclineGreeting
                     STDERR.puts "Server rejected connection. Reason: #{response[:reason]}"
@@ -72,6 +73,24 @@ module Chat
                     STDOUT.puts "Received unrecognized message. Ignoring."
                 end
             end
+        end
+
+        def help
+            <<~END
+
+            Supported commands:
+                <message> - send a message to the default room.
+                /join <room_name> - join a room.
+                /rooms - list all rooms.
+                /leave <room_name> - leave a room.
+                /members - list members of the default room / connected clients.
+                /members <room_name> - list members of a specific room.
+                /say <room_name> <message> - speak to a (non-default) room.
+                /w <display_name> <message> - whisper to a single client by name.
+                /quit or /exit - disconnect from the server and quit the program.
+                /? or /help - print this list of commands.
+
+            END
         end
 
         ##
@@ -142,6 +161,10 @@ module Chat
                     break
                 when /^\/exit$/i
                     break
+                when /^\/\?$/
+                    STDOUT.puts help
+                when /^\/help$/i
+                    STDOUT.puts help
                 when JoinRoom.client_command
                     match = JoinRoom.client_command.match input
                     @socket.send JoinRoom.build(match[:room_name])
