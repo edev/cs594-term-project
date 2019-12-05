@@ -169,8 +169,12 @@ Table of contents
 
 3 Extra features
 
-    The protocol additionally provides private messaging through the Whisper
-    and Whispered messages.
+    The protocol provides private messaging through the Whisper
+    and Whispered messages. The reference implementation includes
+    whisper functionality.
+
+    The protocol may optionally be implemented over SSL/TLS. The reference
+    implementation uses OpenSSL to encrypt the all communications.
 
 4 Reference implementation
 
