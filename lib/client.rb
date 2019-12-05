@@ -1,6 +1,7 @@
 require_relative 'core'
 
 require_relative 'messages'
+require 'openssl'
 require 'socket'
 
 CLI_PROMPT_TEXT = ""
@@ -22,7 +23,15 @@ module Chat
         ##
         # Creates a connection to the server.
         def connect
-            @socket = TCPSocket.new(@host, @port)
+            @socket = OpenSSL::SSL::SSLSocket.new(TCPSocket.new(@host, @port), OpenSSL::SSL::SSLContext.new)
+            @socket.sync_close = true
+
+            begin
+                @socket.connect
+            rescue Exception => e
+                STDOUT.puts "Error: #{e}"
+                exit(1)
+            end
 
             # Modify socket's singleton class to include the Chat::Sendable module.
             class << @socket

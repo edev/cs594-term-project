@@ -1,5 +1,6 @@
 require_relative 'core'
 require_relative 'messages'
+require 'openssl'
 require 'socket'
 
 CLI_PROMPT_TEXT = "server> "
@@ -42,7 +43,22 @@ module Chat
         # port - the port the server should listen on.
         def initialize(port)
             @port = port
-            @tcpServer = TCPServer.new @port
+
+            # Initialize TLS context & connection
+            context = OpenSSL::SSL::SSLContext.new
+            key = OpenSSL::PKey::RSA.new 2048
+            name = OpenSSL::X509::Name.parse 'CN=nobody/DC=ircserver'
+            cert = OpenSSL::X509::Certificate.new
+            cert.version = 2
+            cert.serial = 0
+            cert.not_before = Time.now
+            cert.not_after = Time.now + (3600 * 24 * 365)
+            cert.public_key = key.public_key
+            cert.subject = name
+            cert.sign key, OpenSSL::Digest::SHA1.new
+            context.cert = cert
+            context.key = key
+            @tcpServer = OpenSSL::SSL::SSLServer.new(TCPServer.new(@port), context)
 
             # The fields in this block are all synchronized by the lock below.
             @client_info_lock = Mutex.new
@@ -399,7 +415,12 @@ module Chat
             # Then, start accepting clients for eternity.
             loop do
                 # Accept a new connection (blocking).
-                socket = accept
+                begin
+                    socket = accept
+                rescue OpenSSL::SSL::SSLError => e
+                    STDERR.puts e.inspect
+                    next
+                end
 
                 # Store the client socket before invoking a new thread to listen. This avoids a race condition
                 # between the two threads by ensuring that client is added to the socket list by the time
