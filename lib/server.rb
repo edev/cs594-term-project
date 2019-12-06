@@ -41,8 +41,9 @@ module Chat
 
         ##
         # port - the port the server should listen on.
-        def initialize(port)
+        def initialize(port, daemon=false)
             @port = port
+            @daemon = daemon
 
             # Initialize TLS context & connection
             context = OpenSSL::SSL::SSLContext.new
@@ -209,6 +210,22 @@ module Chat
         end
 
         ##
+        # Yields STDERR to the provided block, unless the server is running as a daemon.
+        def stderr(&block)
+            if @daemon == false
+                yield STDERR
+            end
+        end
+
+        ##
+        # Yields STDOUT to the provided block, unless the server is running as a daemon.
+        def stdout(&block)
+            if @daemon == false
+                yield STDOUT
+            end
+        end
+
+        ##
         # Attempts to look up the intended recipient of a whisper and route the message.
         #
         # Returns (outbound_client, message), where outbound_client is the Client object
@@ -267,7 +284,7 @@ module Chat
                 begin
                     message = client.receive
                 rescue Exception => e
-                    STDERR.puts "Error: #{e.message}"
+                    stderr { |f| f.puts "Error: #{e.message}" }
                     return false
                 end
 
@@ -330,7 +347,7 @@ module Chat
                 begin
                     message = client.receive
                 rescue Exception => e
-                    STDERR.puts "Error: #{e.message}"
+                    stderr { |f| f.puts "Error: #{e.message}" }
                     return
                 end
 
@@ -367,7 +384,7 @@ module Chat
                     recipient, message = whisper(message[:to], client, message[:message])
                     recipient.socket.send message
                 else
-                    STDOUT.puts "[Debug] unrecognized message received:"
+                    stdout { |f| f.puts "[Debug] unrecognized message received:" }
                     p message
                 end
             end
@@ -385,11 +402,11 @@ module Chat
                 when /^\/exit$/i
                     break
                 when /^\/\?$/
-                    STDOUT.puts help
+                    stdout { |f| f.puts help }
                 when /^\/help$/i
-                    STDOUT.puts help
+                    stdout { |f| f.puts help }
                 else
-                    STDERR.puts "Unrecognized command."
+                    stderr { |f| f.puts "Unrecognized command." }
                 end
                 print CLI_PROMPT_TEXT
             end
@@ -405,12 +422,12 @@ module Chat
 
         ##
         # Starts the server using default options and behavior.
-        def start
-            STDOUT.puts "Starting server on port #{@port}."
-            STDOUT.puts help
+        def start()
+            stdout { |f| f.puts "Starting server on port #{@port}." }
+            stdout { |f| f.puts help }
 
             # First, start a prompt thread.
-            @prompt_thread = Thread.new { prompt }
+            @prompt_thread = Thread.new { prompt } unless @daemon == true
 
             # Then, start accepting clients for eternity.
             loop do
@@ -418,7 +435,7 @@ module Chat
                 begin
                     socket = accept
                 rescue OpenSSL::SSL::SSLError => e
-                    STDERR.puts e.inspect
+                    stderr { |f| f.puts e.inspect }
                     next
                 end
 
