@@ -1,9 +1,7 @@
 GEM
   remote: https://rubygems.org/
   specs:
-    ipaddr (1.2.2)
-    openssl (2.1.2)
-      ipaddr
+    openssl (3.0.0)
 
 PLATFORMS
   ruby
